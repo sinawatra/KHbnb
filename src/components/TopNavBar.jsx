@@ -26,7 +26,7 @@ export default function TopNavBar() {
           >
             <button
               aria-label="Account"
-              className="rounded-full shadow-lg p-2 border-b hover:bg-gray-100"
+              className="rounded-xs shadow-sm p-2 hover:cursor-pointer hover:bg-gray-100"
             >
               <User className="h-5 w-5 text-gray-600" />
             </button>
