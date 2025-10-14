@@ -2,6 +2,19 @@
 
 import Image from "next/image";
 import { Camera } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function ProfilePage({ imageURL = null }) {
   return (
@@ -23,9 +36,7 @@ export default function ProfilePage({ imageURL = null }) {
             />
 
             <div className="absolute inset-0 bg-[#0000004D] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <p className="text-white font-semibold rounded">
-                Change Photo
-              </p>
+              <p className="text-white font-semibold rounded">Change Photo</p>
             </div>
 
             <input
@@ -63,9 +74,35 @@ export default function ProfilePage({ imageURL = null }) {
       </div>
 
       <div className="flex pt-4 border-t mt-4">
-        <button className="text-primary font-bold mr-10 hover:cursor-pointer">
-          Delete Account
-        </button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button className="text-primary font-bold mr-10 hover:cursor-pointer">
+              Delete Account
+            </button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Are you sure you wish to delete the account?
+              </DialogTitle>
+              <Label className="mt-4" htmlFor="reason">
+                cheata@example.com
+              </Label>
+            </DialogHeader>
+
+            <DialogFooter className="sm:justify-start">
+              <DialogClose asChild>
+                <Button type="button" variant="destructive">
+                  No, take me back
+                </Button>
+              </DialogClose>
+              <Button type="button" variant="ghost">
+                Yes, continue with the deletion of the account
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <p>
           This account will no longer be available, and all your saved data will
           be permanently deleted.
