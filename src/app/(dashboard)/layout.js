@@ -1,17 +1,6 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import TopNavBar from "@/components/TopNavBar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import SideNavBar from "@/components/SideNavBar";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "Create Next App",
@@ -29,7 +18,7 @@ export default function RootLayout({ children }) {
             <SideNavBar />
           </aside>
 
-          <main className="flex-1 overflow-y-auto p-8">
+          <main className="flex-1 overflow-y-auto p-8 pb-24">
             <SidebarTrigger className="md:hidden mb-4" />
             {children}
           </main>
