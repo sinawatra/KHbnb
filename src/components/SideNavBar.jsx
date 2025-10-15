@@ -9,8 +9,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "./ui/sidebar";
-
+import { Button } from "./ui/button";
 import {
   UserRoundPen,
   CircleDollarSign,
@@ -76,6 +77,11 @@ export default function SideNavBar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
+        <SidebarFooter>
+          <Button variant="outline" className="w-full rounded-none">
+            Logout
+          </Button>
+        </SidebarFooter>
       </Sidebar>
     </div>
   );

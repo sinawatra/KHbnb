@@ -17,40 +17,53 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function ProfilePage({ imageURL = null }) {
+  const handleImageUpload = (file) => {
+    // Handle the image upload logic here
+    console.log("Uploaded file:", file);
+  };
+
   return (
     <div className="pl-4">
       <h1 className="font-bold text-2xl">Profile</h1>
       <p>Photo</p>
-      <div className="mb-10 mt-3 flex h-32 w-32 items-center justify-center rounded-full border bg-[#9797974D]">
-        {imageURL ? (
-          <label
-            htmlFor="profile-upload"
-            className="relative w-32 h-32 group cursor-pointer block"
-          >
-            <Image
-              src={imageURL}
-              alt="Profile Picture"
-              width={128}
-              height={128}
-              className="rounded-full object-cover"
-            />
+      <Dialog>
+        <DialogTrigger asChild>
+          <div className="mb-10 mt-3 flex h-32 w-32 items-center justify-center rounded-full border bg-[#9797974D] relative group cursor-pointer">
+            {imageURL ? (
+              <Image
+                src={imageURL}
+                alt="Profile Picture"
+                width={128}
+                height={128}
+                className="rounded-full object-cover"
+              />
+            ) : (
+              <Camera className="w-12 h-12 text-primary" />
+            )}
 
             <div className="absolute inset-0 bg-[#0000004D] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <p className="text-white font-semibold rounded">Change Photo</p>
+              <p className="text-white font-semibold">Upload Image</p>
             </div>
+          </div>
+        </DialogTrigger>
 
-            <input
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select an Image to Upload</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            <Input
               type="file"
               accept="image/*"
-              onChange={(e) => handleImageUpload(e.target.files[0])}
-              className="hidden"
+              onClick={(e) => handleImageUpload(e.target.files[0])}
               id="profile-upload"
             />
-          </label>
-        ) : (
-          <Camera className="h-10 w-10 text-primary" />
-        )}
-      </div>
+          </DialogDescription>
+          <Button type="button" variant="destructive" className="mt-4 w-full">
+            Save
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       <h3 className="text-[#00000080] font-semibold">Name</h3>
       <p className="font-medium mb-6">Cheata</p>
@@ -82,24 +95,26 @@ export default function ProfilePage({ imageURL = null }) {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                Are you sure you wish to delete the account?
+              <DialogTitle className="text-center text-lg">
+                Do you wish to delete the account associated with{" "}
+                <b>user.email@example.com</b>
               </DialogTitle>
-              <Label className="mt-4" htmlFor="reason">
-                cheata@example.com
-              </Label>
             </DialogHeader>
 
-            <DialogFooter className="sm:justify-start">
+            <div className="flex flex-col gap-4 mt-4">
               <DialogClose asChild>
-                <Button type="button" variant="destructive">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="shadow-md"
+                >
                   No, take me back
                 </Button>
               </DialogClose>
               <Button type="button" variant="ghost">
                 Yes, continue with the deletion of the account
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
