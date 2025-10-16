@@ -2,39 +2,48 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-// This function handles POST requests to /api/auth/login
 export async function POST(request) {
-  // Get the credentials from the request body
   const { email, password } = await request.json();
 
-  // Basic validation
   if (!email || !password) {
-    return NextResponse.json(
-      { error: 'Email and password are required.' },
-      { status: 400 }
-    );
+    return NextResponse.json({
+      success: false,
+      message: 'error',
+      data: { details: 'Email and password are required.' },
+    });
   }
 
-  // Initialize the Supabase client
   const supabase = createRouteHandlerClient({ cookies });
-
-  // Attempt to sign in the user with their email and password
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
-
-  // Handle any login errors (e.g., incorrect password, user not found)
-  if (error) {
-    return NextResponse.json(
-      { error: 'Invalid login credentials. Please check your email and password.' },
-      { status: 401 } // 401 status means "Unauthorized"
-    );
+  if (authError) {
+    return NextResponse.json({
+      success: false,
+      message: 'error',
+      data: { details: 'Invalid login credentials.' },
+    });
   }
 
-  // If login is successful, return the user's session information
-  return NextResponse.json({
-    message: 'Login successful!',
-    session: data.session,
+  const { data: profileData, error: profileError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('user_id', authData.user.id)
+    .single();
+
+  if (profileError || !profileData) {
+    return NextResponse.json({
+      success: false,
+      message: 'error',
+      data: { details: 'Could not find user profile.' },
+    });
+  } return NextResponse.json({
+    success: true,
+    message: 'successful',
+    data: {
+      session: authData.session,
+      role: profileData.role,
+    },
   });
 }
