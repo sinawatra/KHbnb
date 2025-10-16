@@ -15,7 +15,7 @@ export default function TopNavBar() {
 
         <div className="flex gap-20 items-center">
           <Link
-            href="/"
+            href="/properties"
             className="flex items-center space-x-2 font-medium text-gray-600 hover:text-black"
           >
             Find property

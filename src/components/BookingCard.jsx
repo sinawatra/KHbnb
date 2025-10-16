@@ -1,5 +1,8 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Calendar, Users } from "lucide-react";
+import { toast } from "sonner";
 
 export default function BookingCard({ booking }) {
   const getStatusStyles = (status) => {
@@ -72,7 +75,7 @@ export default function BookingCard({ booking }) {
               View Property
             </Button>
             {booking.status === "pending" && (
-              <Button variant="destructive" className="rounded-md">
+              <Button variant="destructive" className="rounded-md" onClick={() => toast.success("Booking cancelled succesfully")}>
               X Cancel Booking
             </Button>
             )}
