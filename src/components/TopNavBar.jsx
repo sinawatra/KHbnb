@@ -8,12 +8,12 @@ export default function TopNavBar() {
     <header className="w-full">
       <nav className="flex items-center justify-between p-4 bg-white">
         <div>
-          <Link href="/" className="text-2xl font-bold text-primary">
+          <Link href="/" className="text-3xl font-bold text-primary ml-4">
             KHbnb
           </Link>
         </div>
 
-        <div className="flex gap-20 items-center">
+        <div className="flex gap-20 items-center mr-4">
           <Link
             href="/properties"
             className="flex items-center space-x-2 font-medium text-gray-600 hover:text-black"
