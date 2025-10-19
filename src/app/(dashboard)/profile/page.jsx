@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,17 +10,28 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useAuth } from "@/components/contexts/AuthContext";
 
-export default function ProfilePage({ imageURL = null }) {
+export default function ProfilePage() {
+  const router = useRouter();
+  const { user, profile } = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/register");
+    }
+  }, [user, router]);
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
   const handleImageUpload = (file) => {
-    // Handle the image upload logic here
     console.log("Uploaded file:", file);
   };
 
@@ -29,9 +42,9 @@ export default function ProfilePage({ imageURL = null }) {
       <Dialog>
         <DialogTrigger asChild>
           <div className="mb-10 mt-3 flex h-32 w-32 items-center justify-center rounded-full border bg-[#9797974D] relative group cursor-pointer">
-            {imageURL ? (
+            {profile.image_url ? (
               <Image
-                src={imageURL}
+                src={profile.image_url}
                 alt="Profile Picture"
                 width={128}
                 height={128}
@@ -66,10 +79,10 @@ export default function ProfilePage({ imageURL = null }) {
       </Dialog>
 
       <h3 className="text-[#00000080] font-semibold">Name</h3>
-      <p className="font-medium mb-6">Cheata</p>
+      <p className="font-medium mb-6">{profile.full_name}</p>
 
       <h3 className="text-[#00000080] font-semibold">Email</h3>
-      <p className="font-medium mb-6">cheata@example.com</p>
+      <p className="font-medium mb-6">{profile.email}</p>
 
       <h3 className="text-[#00000080] font-semibold">Password</h3>
       <p className="font-medium mb-6">Reset password</p>
@@ -82,7 +95,9 @@ export default function ProfilePage({ imageURL = null }) {
 
       <h3 className="text-[#00000080] font-semibold">Phone Number</h3>
       <div className="flex gap-10 mb-10">
-        <p className="font-medium">+855 123 456 789</p>
+        <p className="font-medium">
+          {profile.phone_number ? profile.phone_number : "Enter Phone Number"}
+        </p>
         <button className="font-bold mr-10 hover:cursor-pointer">Edit</button>
       </div>
 

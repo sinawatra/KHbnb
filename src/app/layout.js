@@ -1,5 +1,6 @@
 import { Nunito_Sans } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/components/contexts/AuthContext";
 
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
@@ -14,10 +15,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={nunitoSans.className}
-      >
-        {children}
+      <body className={nunitoSans.className}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
