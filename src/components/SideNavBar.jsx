@@ -5,7 +5,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -18,6 +17,7 @@ import {
   CreditCard,
   Calendar,
 } from "lucide-react";
+import { useAuth } from "./contexts/AuthContext";
 
 const items = [
   {
@@ -44,10 +44,14 @@ const items = [
 
 export default function SideNavBar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <div>
-      <Sidebar collapsible="none" className=" !relative !w-40 !h-full !bg-white">
+      <Sidebar
+        collapsible="none"
+        className=" !relative !w-40 !h-full !bg-white"
+      >
         <SidebarContent>
           <SidebarGroup className="!m-0 !p-0">
             <SidebarGroupContent>
@@ -78,7 +82,17 @@ export default function SideNavBar() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <Button variant="outline" className="w-full rounded-none">
+          <Button
+            variant="outline"
+            className="w-full rounded-none"
+            onClick={async () => {
+              await fetch("/api/auth/logout", {
+                method: "POST",
+              });
+              logout();
+              window.location.href = "/";
+            }}
+          >
             Logout
           </Button>
         </SidebarFooter>
