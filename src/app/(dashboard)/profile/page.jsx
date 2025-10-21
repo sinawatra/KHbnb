@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,20 +19,43 @@ import { useAuth } from "@/components/contexts/AuthContext";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, loading } = useAuth();
+
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       router.push("/register");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (loading) {
+    return <div>Loading profile...</div>;
   }
 
-  const handleImageUpload = (file) => {
-    console.log("Uploaded file:", file);
+  if (!user) {
+    return <div>Redirecting to login...</div>;
+  }
+
+  if (!profile) {
+    return <div>Error loading profile data. Please try again.</div>;
+  }
+
+  const handleImageUpload = () => {
+    if (!selectedFile) {
+      console.log("No file selected.");
+      return;
+    }
+    console.log("Uploading file:", selectedFile);
+    //
+    // --- THIS IS WHERE YOU PUT YOUR SUPABASE UPLOAD LOGIC ---
+    //
+    // const { data, error } = await supabase.storage
+    //   .from('profile_image')
+    //   .upload(...)
+    //
+    // After it succeeds, close the dialog (if you want)
+    // and call fetchUserProfile() to refresh the data
   };
 
   return (
@@ -53,7 +76,6 @@ export default function ProfilePage() {
             ) : (
               <Camera className="w-12 h-12 text-primary" />
             )}
-
             <div className="absolute inset-0 bg-[#0000004D] rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <p className="text-white font-semibold">Upload Image</p>
             </div>
@@ -68,11 +90,16 @@ export default function ProfilePage() {
             <Input
               type="file"
               accept="image/*"
-              onClick={(e) => handleImageUpload(e.target.files[0])}
+              onChange={(e) => setSelectedFile(e.target.files[0])}
               id="profile-upload"
             />
           </DialogDescription>
-          <Button type="button" variant="destructive" className="mt-4 w-full">
+          <Button
+            type="button"
+            variant="destructive"
+            className="mt-4 w-full"
+            onClick={handleImageUpload}
+          >
             Save
           </Button>
         </DialogContent>
@@ -112,7 +139,7 @@ export default function ProfilePage() {
             <DialogHeader>
               <DialogTitle className="text-center text-lg">
                 Do you wish to delete the account associated with{" "}
-                <b>user.email@example.com</b>
+                <b>{profile.email}</b>
               </DialogTitle>
             </DialogHeader>
 

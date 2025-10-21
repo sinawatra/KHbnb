@@ -27,25 +27,31 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const storedSession = localStorage.getItem("session");
-    const storedRole = localStorage.getItem("role");
+    const loadUserFromStorage = async () => {
+      const storedSession = localStorage.getItem("session");
+      const storedRole = localStorage.getItem("role");
 
-    if (storedSession && storedRole) {
-      try {
-        const session = JSON.parse(storedSession);
-        setUser({
-          session,
-          role: storedRole,
-        });
-        fetchUserProfile(session.user.id);
-      } catch (error) {
-        localStorage.removeItem("session");
-        localStorage.removeItem("role");
+      if (storedSession && storedRole) {
+        try {
+          const session = JSON.parse(storedSession);
+          setUser({
+            session,
+            role: storedRole,
+          });
+          await fetchUserProfile(session.user.id);
+        } catch (error) {
+          localStorage.removeItem("session");
+          localStorage.removeItem("role");
+          setUser(null);
+          setProfile(null);
+        }
       }
-    }
-    setLoading(false);
-  }, []);
+      setLoading(false);
+    };
 
+    loadUserFromStorage();
+  }, []);
+  
   const login = async (email, password) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",
@@ -95,7 +101,15 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, login, signup, logout, loading, fetchUserProfile }}
+      value={{
+        user,
+        profile,
+        login,
+        signup,
+        logout,
+        loading,
+        fetchUserProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>
