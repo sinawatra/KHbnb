@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
       <TopNavBar />
 
       <div className="flex flex-1 overflow-hidden border-t">
-        <SidebarProvider >
+        <SidebarProvider>
           <aside className="hidden !w-40 flex-col border-r bg-white md:flex">
             <SideNavBar />
           </aside>
@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
           <main className="flex-1 overflow-y-auto p-8 pb-24">
             <SidebarTrigger className="md:hidden mb-4" />
             {children}
-            <Toaster/>
+            <Toaster />
           </main>
         </SidebarProvider>
       </div>

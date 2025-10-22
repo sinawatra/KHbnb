@@ -3,8 +3,8 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main>
+    <div>
       <h1>Payment</h1>
-    </main>
+    </div>
   );
 }

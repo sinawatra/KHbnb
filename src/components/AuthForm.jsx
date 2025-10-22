@@ -12,7 +12,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function AuthForm() {
   const router = useRouter();
-  const { login, signup } = useAuth();
+  const { login, signup, loading } = useAuth();
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
