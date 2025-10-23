@@ -42,14 +42,14 @@ export async function POST(request) {
       data: { details: "Could not find user profile." },
     });
   }
-  if (profileData.role === "admin") {
-    await supabase.auth.signOut();
-    return NextResponse.json({
-      success: false,
-      message: "error",
-      data: { details: "Invalid login credentials." },
-    });
-  }
+  // if (profileData.role === "admin") {
+  //   await supabase.auth.signOut();
+  //   return NextResponse.json({
+  //     success: false,
+  //     message: "error",
+  //     data: { details: "Invalid login credentials." },
+  //   });
+  // }
   return NextResponse.json({
     success: true,
     message: "successful",
