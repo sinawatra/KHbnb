@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const AuthContext = createContext();
@@ -10,21 +10,24 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const supabase = createClientComponentClient();
 
-  const fetchUserProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("user_id, full_name, email, phone_number, image_url")
-        .eq("user_id", userId)
-        .single();
+  const fetchUserProfile = useCallback(
+    async (userId) => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("user_id, full_name, email, phone_number, image_url")
+          .eq("user_id", userId)
+          .single();
 
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      setProfile(null);
-    }
-  };
+        if (error) throw error;
+        setProfile(data);
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        setProfile(null);
+      }
+    },
+    [supabase]
+  );
 
   useEffect(() => {
     const loadUserFromStorage = async () => {
@@ -50,8 +53,8 @@ export function AuthProvider({ children }) {
     };
 
     loadUserFromStorage();
-  }, []);
-  
+  }, [fetchUserProfile]);
+
   const login = async (email, password) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",

@@ -28,15 +28,22 @@ const provinces = [
 ];
 
 export default function Searchbar() {
-  const [checkIn, setCheckIn] = useState();
-  const [checkOut, setCheckOut] = useState();
+  const [date, setDate] = useState({ from: undefined, to: undefined });
   const [location, setLocation] = useState("");
+
+  const formatDate = (dateObj) => {
+    if (!dateObj) return "Add dates";
+    return dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="pl-2 bg-white border-2 border-gray-300 rounded-full flex w-full max-w-5xl items-center">
       <Popover>
         <PopoverTrigger asChild>
-          <div className="px-6 py-3 border-r flex items-center gap-3 cursor-pointer">
+          <div className="flex-1 px-6 py-3 border-r flex items-center gap-3 cursor-pointer">
             <FlagTriangleRight />
             <div className="flex flex-col">
               <label className="font-semibold">Where to?</label>
@@ -44,7 +51,7 @@ export default function Searchbar() {
                 placeholder="Search destinations"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="outline-none"
+                className="outline-none text-sm text-gray-600"
               />
             </div>
           </div>
@@ -74,59 +81,74 @@ export default function Searchbar() {
           </Command>
         </PopoverContent>
       </Popover>
-
       {/* Check-in */}
       <Popover>
-        <PopoverTrigger>
-          <div className="px-14 py-3 border-r flex items-center gap-3">
+        <PopoverTrigger asChild>
+          <button className="flex-1 px-6 py-3 border-r flex items-center gap-3">
             <CalendarIcon />
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
               <label className="font-semibold">Check in</label>
-              <p>Add dates</p>
+              <p className="text-sm text-gray-600">{formatDate(date?.from)}</p>
             </div>
-          </div>
+          </button>
         </PopoverTrigger>
         <PopoverContent
           avoidCollisions={false}
           side="bottom"
           align="start"
           sideOffset={5}
+          className="w-auto p-0"
         >
-          <Calendar mode="single" selected={checkIn} onSelect={setCheckIn} />
+          <Calendar
+            mode="range"
+            selected={date}
+            onSelect={setDate}
+            numberOfMonths={2}
+            disabled={(date) => date < new Date()}
+            showOutsideDays={false}
+          />
         </PopoverContent>
       </Popover>
 
       {/* Check-out */}
       <Popover>
-        <PopoverTrigger>
-          <div className="px-14 py-3 border-r flex items-center gap-3">
+        <PopoverTrigger asChild>
+          <button className="flex-1 px-6 py-3 border-r flex items-center gap-3">
             <CalendarIcon />
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
               <label className="font-semibold">Check out</label>
-              <p>Add dates</p>
+              <p className="text-sm text-gray-600">{formatDate(date?.to)}</p>
             </div>
-          </div>
+          </button>
         </PopoverTrigger>
         <PopoverContent
           avoidCollisions={false}
           side="bottom"
           align="start"
           sideOffset={5}
+          className="w-auto p-0"
         >
-          <Calendar mode="single" selected={checkOut} onSelect={setCheckOut} />
+          <Calendar
+            mode="range"
+            selected={date}
+            onSelect={setDate}
+            numberOfMonths={2}
+            disabled={(date) => date < new Date()}
+            showOutsideDays={false}
+          />
         </PopoverContent>
       </Popover>
 
       {/* Guests */}
       <Popover>
-        <PopoverTrigger>
-          <div className="px-14 py-3 flex items-center gap-3">
+        <PopoverTrigger asChild>
+          <button className="px-6 py-3 flex items-center gap-3 whitespace-nowrap">
             <UsersRound className="w-5 h-5" />
-            <div className="flex flex-col">
+            <div className="flex flex-col text-left">
               <label className="font-semibold">Add guests</label>
-              <p>0 guests</p>
+              <p className="text-sm text-gray-600">0 guests</p>
             </div>
-          </div>
+          </button>
         </PopoverTrigger>
         <PopoverContent
           side="bottom"
@@ -184,7 +206,7 @@ export default function Searchbar() {
       </Popover>
 
       {/* Search Button */}
-      <Button className="rounded-full p-3 ml-4 align-center self-center">
+      <Button className="rounded-full p-3 mr-2 align-center self-center">
         <Search />
       </Button>
     </div>

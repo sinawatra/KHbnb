@@ -58,11 +58,14 @@ export default function Home() {
         <section className="p-10 bg-[#fcfcfc] border-t">
           <div className="flex mb-10">
             <div className="m-5 justify-center flex flex-1">
-              <img
-                src="/temple.jpg"
-                alt="images"
-                className="w-100 h-50 bg-grey-200"
-              />
+              <div className="relative w-100 h-50">
+                <Image
+                  src="/temple.jpg"
+                  alt="images"
+                  fill={true}
+                  className="bg-grey-200"
+                />
+              </div>
             </div>
             <div className="flex-1 self-center">
               <div className="w-full flex flex-col items-center">
@@ -76,7 +79,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-center">
             <Searchbar />
           </div>
@@ -100,7 +103,7 @@ export default function Home() {
         </section>
       </main>
 
-      <Footer/>
+      <Footer />
     </>
   );
 }
