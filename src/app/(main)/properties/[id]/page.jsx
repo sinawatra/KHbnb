@@ -1,6 +1,7 @@
 "use client";
-
 import { use, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/contexts/AuthContext";
 import Image from "next/image";
 import Searchbar from "@/components/Seachbar";
 import { Calendar } from "@/components/ui/calendar";
@@ -23,6 +24,8 @@ import Footer from "@/components/Footer";
 
 export default function PropertyDetailsPage({ params }) {
   const resolvedParams = use(params);
+  const router = useRouter();
+  const { profile, loading } = useAuth();
   const [date, setDate] = useState({ from: undefined, to: undefined });
   const [guests, setGuests] = useState(1);
 
@@ -68,12 +71,48 @@ export default function PropertyDetailsPage({ params }) {
     });
   };
 
+  const handleBookClick = () => {
+    if (!profile) {
+      router.push("/register");
+      return;
+    }
+
+    // Validate dates are selected
+    if (!date?.from || !date?.to) {
+      alert("Please select check-in and check-out dates");
+      return;
+    }
+
+    // Store booking data in sessionStorage
+    const bookingData = {
+      propertyId: property.id,
+      property: {
+        title: property.title,
+        location: property.location,
+        image: property.images[0],
+        host: property.host,
+        pricePerNight: property.pricePerNight,
+      },
+      checkIn: date.from.toISOString(),
+      checkOut: date.to.toISOString(),
+      nights,
+      guests,
+      subtotal,
+      cleaningFee: property.cleaningFee,
+      serviceFee: property.serviceFee,
+      total,
+    };
+
+    sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
+
+    router.push("/checkout?step=confirm-and-pay");
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="border-b p-4 flex justify-center">
         <Searchbar />
       </div>
-
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-6">
           <h1 className="text-3xl font-semibold mb-2">{property.title}</h1>
@@ -82,7 +121,6 @@ export default function PropertyDetailsPage({ params }) {
             <span className="underline">{property.location}</span>
           </div>
         </div>
-
         <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[500px] rounded-xl overflow-hidden mb-8">
           <div className="col-span-2 row-span-2 relative">
             <Image
@@ -125,7 +163,6 @@ export default function PropertyDetailsPage({ params }) {
             />
           </div>
         </div>
-
         <div className="grid grid-cols-3 gap-12">
           <div className="col-span-2">
             <div className="border-b pb-6 mb-6">
@@ -137,7 +174,6 @@ export default function PropertyDetailsPage({ params }) {
                 {property.beds} bed · {property.bathrooms} private bathroom
               </p>
             </div>
-
             <div className="space-y-6 border-b pb-6 mb-6">
               <div className="flex gap-4">
                 <DoorOpen />
@@ -169,7 +205,6 @@ export default function PropertyDetailsPage({ params }) {
                 </div>
               </div>
             </div>
-
             <div className="border-b pb-6 mb-6">
               <h3 className="font-bold">Description</h3>
               <p className="text-gray-700 leading-relaxed">
@@ -178,7 +213,6 @@ export default function PropertyDetailsPage({ params }) {
                 filled holidays.
               </p>
             </div>
-
             <div>
               <h3 className="text-xl font-semibold mb-4">
                 What this place offers
@@ -203,7 +237,6 @@ export default function PropertyDetailsPage({ params }) {
               </div>
             </div>
           </div>
-
           <div className="col-span-1">
             <div className="border rounded-xl p-6 shadow-lg sticky top-6">
               <div className="flex items-baseline gap-1 mb-4">
@@ -212,7 +245,6 @@ export default function PropertyDetailsPage({ params }) {
                 </span>
                 <span className="text-gray-600">per night</span>
               </div>
-
               <Popover>
                 <PopoverTrigger asChild>
                   <div className="border rounded-lg mb-4 cursor-pointer">
@@ -254,15 +286,16 @@ export default function PropertyDetailsPage({ params }) {
                   />
                 </PopoverContent>
               </Popover>
-
-              <button className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg hover:bg-red-700 mb-4">
+              <button
+                onClick={handleBookClick}
+                disabled={loading}
+                className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg hover:bg-red-700 mb-4 disabled:opacity-50"
+              >
                 Book
               </button>
-
               <p className="text-center text-sm text-gray-600 mb-4">
                 You won't be charged yet
               </p>
-
               {nights > 0 && (
                 <>
                   <div className="space-y-2 text-sm border-t pt-4">
@@ -282,7 +315,6 @@ export default function PropertyDetailsPage({ params }) {
                       <span>${property.serviceFee}</span>
                     </div>
                   </div>
-
                   <div className="flex justify-between font-semibold pt-4 border-t mt-4">
                     <span>Total before taxes</span>
                     <span>${total}</span>
