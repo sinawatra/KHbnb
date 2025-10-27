@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-
+import Image from "next/image";
 // This component is designed to be easily replaced with Stripe Elements
 // Just swap the input fields with <CardElement /> when ready
 
@@ -113,18 +113,54 @@ export default function PaymentForm({ onSubmit, isLoading }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Payment Cards Icons */}
       <div className="flex gap-2">
-        <img src="/icons/amex.svg" alt="Amex" className="h-6" onError={(e) => e.target.style.display = 'none'} />
-        <img src="/icons/apple-pay.svg" alt="Apple Pay" className="h-6" onError={(e) => e.target.style.display = 'none'} />
-        <img src="/icons/google-pay.svg" alt="Google Pay" className="h-6" onError={(e) => e.target.style.display = 'none'} />
-        <img src="/icons/mastercard.svg" alt="Mastercard" className="h-6" onError={(e) => e.target.style.display = 'none'} />
-        <img src="/icons/paypal.svg" alt="PayPal" className="h-6" onError={(e) => e.target.style.display = 'none'} />
-        <img src="/icons/visa.svg" alt="Visa" className="h-6" onError={(e) => e.target.style.display = 'none'} />
+        <Image
+          src="/icons/amex.svg"
+          alt="Amex"
+          className="h-6 w-auto" // Or just use width/height props
+          width={24}
+          height={24}
+        />
+        <Image
+          src="/icons/apple-pay.svg"
+          alt="Apple Pay"
+          className="h-6 w-auto"
+          width={24}
+          height={24}
+        />
+        <Image
+          src="/icons/google-pay.svg"
+          alt="Google Pay"
+          className="h-6 w-auto"
+          width={24}
+          height={24}
+        />
+        <Image
+          src="/icons/mastercard.svg"
+          alt="Mastercard"
+          className="h-6 w-auto"
+          width={24}
+          height={24}
+        />
+        <Image
+          src="/icons/paypal.svg"
+          alt="PayPal"
+          className="h-6 w-auto"
+          width={24}
+          height={24}
+        />
+        <Image
+          src="/icons/visa.svg"
+          alt="Visa"
+          className="h-6 w-auto"
+          width={24}
+          height={24}
+        />
       </div>
 
       {/* Cardholder Name */}
       <div>
         <label className="block text-sm font-medium mb-2">
-          Cardholder's name <span className="text-red-600">*</span>
+          Cardholder&apos;s name <span className="text-red-600">*</span>
         </label>
         <input
           type="text"

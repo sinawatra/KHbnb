@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Calendar, Users } from "lucide-react";
 import { toast } from "sonner";
+import Image from "next/image";
 
 export default function BookingCard({ booking }) {
   const getStatusStyles = (status) => {
@@ -21,11 +22,14 @@ export default function BookingCard({ booking }) {
   return (
     <div className="mt-10 bg-white p-6 rounded-lg shadow-md flex">
       <div className="w-40 h-40 bg-gray-200 rounded-lg overflow-hidden">
-        <img
-          src={booking.image}
-          alt={booking.title}
-          className="w-full h-full object-cover"
-        />
+        <div className="w-48 h-32 relative">
+          <Image
+            src={booking.image}
+            alt={booking.title}
+            fill={true}
+            className="object-cover"
+          />
+        </div>
       </div>
       <div className="ml-6 flex-grow">
         <div className="flex justify-between items-start">
@@ -75,9 +79,13 @@ export default function BookingCard({ booking }) {
               View Property
             </Button>
             {booking.status === "pending" && (
-              <Button variant="destructive" className="rounded-md" onClick={() => toast.success("Booking cancelled succesfully")}>
-              X Cancel Booking
-            </Button>
+              <Button
+                variant="destructive"
+                className="rounded-md"
+                onClick={() => toast.success("Booking cancelled succesfully")}
+              >
+                X Cancel Booking
+              </Button>
             )}
           </div>
         </div>

@@ -208,7 +208,7 @@ export default function PropertyDetailsPage({ params }) {
             <div className="border-b pb-6 mb-6">
               <h3 className="font-bold">Description</h3>
               <p className="text-gray-700 leading-relaxed">
-                Showing off with one of the world's most remarkable beaches,
+                Showing off with one of the world&apos;s most remarkable beaches,
                 Island Resort welcomes you to experience an original beach
                 filled holidays.
               </p>
@@ -294,7 +294,7 @@ export default function PropertyDetailsPage({ params }) {
                 Book
               </button>
               <p className="text-center text-sm text-gray-600 mb-4">
-                You won't be charged yet
+                You won&apos;t be charged yet
               </p>
               {nights > 0 && (
                 <>
