@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
-import Searchbar from "@/components/Seachbar";
-import Footer from "@/components/Footer";
 import { ListFilterPlus } from "lucide-react";
 import PropertyCard from "@/components/PropertyCard";
+import Searchbar from "@/components/Seachbar";
+import Footer from "@/components/Footer";
+import Filter from "@/components/Filter";
+import { useState } from "react";
 
 const properties = [
   {
@@ -16,7 +20,7 @@ const properties = [
   {
     id: 2,
     title: "Mountain Cabin",
-    images: ["/beachvilla.jpg", "/hotel.jpg", "/resort.jpg"],
+    images: ["/resort.jpg", "/hotel.jpg", "/resort.jpg"],
     distance: "5 miles away",
     dates: "Feb 1-5",
     pricePerNight: 149.99,
@@ -24,7 +28,7 @@ const properties = [
   {
     id: 3,
     title: "City Apartment",
-    images: ["/beachvilla.jpg", "/hotel.jpg", "/resort.jpg"],
+    images: ["/hotel.jpg", "/hotel.jpg", "/resort.jpg"],
     distance: "1 mile away",
     dates: "Mar 10-15",
     pricePerNight: 79.99,
@@ -48,15 +52,28 @@ const properties = [
 ];
 
 export default function Properties() {
+  const [filteredListings, setFilteredListings] = useState(properties);
+
+  const handleApplyFilters = (filters) => {
+    const filtered = properties.filter((property) => {
+      const price = property.pricePerNight;
+
+      if (price < filters.minPrice || price > filters.maxPrice) {
+        return false;
+      }
+
+      return true;
+    });
+
+    setFilteredListings(filtered);
+  };
+
   return (
     <>
       <section className="p-6 flex flex-col gap-6">
         <div className="flex justify-center gap-6">
           <Searchbar />
-          <button className="bg-white px-6 rounded-full flex gap-2 items-center border">
-            <ListFilterPlus />
-            Filters
-          </button>
+          <Filter onApplyFilters={handleApplyFilters} />
         </div>
         <h1 className="font-bold text-2xl self-center">All Properties</h1>
         <p className="font-semibold text-gray-500 self-center">
@@ -74,7 +91,7 @@ export default function Properties() {
           </button>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {properties.map((property) => (
+          {filteredListings.map((property) => (
             <PropertyCard key={property.id} property={property} />
           ))}
         </div>
