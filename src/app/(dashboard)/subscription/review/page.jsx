@@ -106,7 +106,7 @@ export default function ReviewPage() {
 
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="font-semibold">Today's order</span>
+                <span className="font-semibold">Today&apos;s order</span>
                 <span className="font-semibold">$50.00 USD</span>
               </div>
               <p className="text-sm text-gray-500">
