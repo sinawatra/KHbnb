@@ -86,9 +86,11 @@ export default function Properties() {
           <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit mb-4">
             Phnom Penh
           </h2>
-          <button className="bg-black rounded-full text-white font-bold py-2 px-3 w-fit mb-4">
-            View in map
-          </button>
+          <Link href="/map">
+            <button className="bg-black rounded-full text-white font-bold py-2 px-3 w-fit mb-4">
+              View in map
+            </button>
+          </Link>
         </div>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {filteredListings.map((property) => (
