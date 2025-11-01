@@ -9,6 +9,7 @@ export default function MapPin({ property, onClick, isSelected }) {
     <AdvancedMarker
       position={{ lat: property.lat, lng: property.lng }}
       onClick={() => onClick(property)}
+      zIndex={isHovered || isSelected ? 100 : 1}
     >
       <div
         onMouseEnter={() => setIsHovered(true)}
@@ -17,7 +18,11 @@ export default function MapPin({ property, onClick, isSelected }) {
           bg-white rounded-full px-3 py-1.5 font-semibold text-sm
           shadow-md cursor-pointer border border-gray-200
           transition-all duration-200
-          ${isHovered || isSelected ? 'scale-110 bg-black text-white z-50' : 'hover:scale-105'}
+          ${
+            isHovered || isSelected
+              ? "scale-110 !bg-black text-white"
+              : "hover:scale-105"
+          }
         `}
       >
         ${property.pricePerNight}
