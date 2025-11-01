@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import Filter from "@/components/Filter";
 import { useState } from "react";
 import { APIProvider, Map } from "@vis.gl/react-google-maps";
+import MapPin from "@/components/MapPin";
+import MapPropertyCard from "@/components/MapPropertyCard";
 
 const properties = [
   {
@@ -16,6 +18,8 @@ const properties = [
     distance: "2 miles away",
     dates: "Jan 15-20",
     pricePerNight: 99.99,
+    lat: 11.5564,
+    lng: 104.9282,
   },
   {
     id: 2,
@@ -24,6 +28,8 @@ const properties = [
     distance: "5 miles away",
     dates: "Feb 1-5",
     pricePerNight: 149.99,
+    lat: 11.56,
+    lng: 104.932,
   },
   {
     id: 3,
@@ -32,6 +38,8 @@ const properties = [
     distance: "1 mile away",
     dates: "Mar 10-15",
     pricePerNight: 79.99,
+    lat: 11.552,
+    lng: 104.925,
   },
   {
     id: 4,
@@ -40,6 +48,8 @@ const properties = [
     distance: "10 miles away",
     dates: "Apr 5-10",
     pricePerNight: 199.99,
+    lat: 11.561,
+    lng: 104.935,
   },
   {
     id: 5,
@@ -48,11 +58,14 @@ const properties = [
     distance: "15 miles away",
     dates: "May 1-7",
     pricePerNight: 129.99,
+    lat: 11.549,
+    lng: 104.921,
   },
 ];
 
 export default function Properties() {
   const [filteredListings, setFilteredListings] = useState(properties);
+  const [selectedProperty, setSelectedProperty] = useState(null);
   const [showMap, setShowMap] = useState(false);
   const [zoom, setZoom] = useState(12);
 
@@ -116,8 +129,25 @@ export default function Properties() {
                 disableDefaultUI={true}
                 gestureHandling="greedy"
                 mapId="af1b14d4f5d1b9695cb5c9d6"
-              />
+                onClick={() => setSelectedProperty(null)}
+              >
+                {filteredListings.map((property) => (
+                  <MapPin
+                    key={property.id}
+                    property={property}
+                    onClick={setSelectedProperty}
+                    isSelected={selectedProperty?.id === property.id}
+                  />
+                ))}
+              </Map>
             </div>
+
+            {selectedProperty && (
+              <MapPropertyCard
+                property={selectedProperty}
+                onClose={() => setSelectedProperty(null)}
+              />
+            )}
 
             <div className="absolute top-6 z-10 w-full flex justify-center gap-4 px-6">
               <Searchbar />
