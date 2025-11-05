@@ -1,10 +1,13 @@
-import { Suspense } from 'react';
-import CheckoutClient from './CheckoutClient';
+import { Suspense } from "react";
+import StripeWrapper from "./StripeWrapper";
+import CheckoutClient from "./CheckoutClient";
 
 export default function CheckoutPage() {
   return (
     <Suspense fallback={<LoadingUI />}>
-      <CheckoutClient />
+      <StripeWrapper>
+        <CheckoutClient />
+      </StripeWrapper>
     </Suspense>
   );
 }

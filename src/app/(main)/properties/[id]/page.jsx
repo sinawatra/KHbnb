@@ -72,10 +72,10 @@ export default function PropertyDetailsPage({ params }) {
   };
 
   const handleBookClick = () => {
-    if (!profile) {
-      router.push("/register");
-      return;
-    }
+    // if (!profile) {
+    //   router.push("/register");
+    //   return;
+    // }
 
     // Validate dates are selected
     if (!date?.from || !date?.to) {
