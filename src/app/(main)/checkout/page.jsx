@@ -5,9 +5,7 @@ import CheckoutClient from "./CheckoutClient";
 export default function CheckoutPage() {
   return (
     <Suspense fallback={<LoadingUI />}>
-      <StripeWrapper>
-        <CheckoutClient />
-      </StripeWrapper>
+      <CheckoutClient />
     </Suspense>
   );
 }
