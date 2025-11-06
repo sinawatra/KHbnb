@@ -28,7 +28,7 @@ export default function Filter({ onApplyFilters }) {
 
   const handleClearAll = () => {
     setMinPrice(0);
-    setMaxPrice(50);
+    setMaxPrice(500);
     setRooms(0);
     setBeds(0);
     setBathrooms(0);
