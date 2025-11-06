@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { stripe } from "@/lib/stripe";
 
 export async function POST(request) {
   const { fullName, email, password } = await request.json();
@@ -17,21 +18,68 @@ export async function POST(request) {
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // ONLY Step 1 is needed now. The trigger handles the rest.
-  const { error } = await supabase.auth.signUp({
+  const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        full_name: fullName, // Pass full_name to the trigger
+        full_name: fullName,
       },
     },
   });
 
-  if (error) {
+  if (authError) {
     return NextResponse.json({
       success: false,
       message: "error",
-      data: { details: error.message },
+      data: { details: authError.message },
+    });
+  }
+
+  if (!authData.user) {
+    return NextResponse.json({
+      success: false,
+      message: "error",
+      data: { details: "Signup failed, user not created." },
+    });
+  }
+
+  let customerId;
+  try {
+    const customer = await stripe.customers.create({
+      email: authData.user.email,
+      name: fullName,
+      metadata: {
+        supabase_user_id: authData.user.id,
+      },
+    });
+    customerId = customer.id;
+  } catch (stripeError) {
+    console.error("Stripe customer creation failed:", stripeError.message);
+    await supabase.auth.admin.deleteUser(authData.user.id);
+
+    return NextResponse.json({
+      success: false,
+      message: "error",
+      data: { details: "Could not create billing profile." },
+    });
+  }
+
+  // Save the Stripe ID
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ stripe_customer_id: customerId })
+    .eq("user_id", authData.user.id);
+
+  if (updateError) {
+    console.error("Failed to save stripe_customer_id:", updateError.message);
+    await supabase.auth.admin.deleteUser(authData.user.id);
+    await stripe.customers.del(customerId);
+
+    return NextResponse.json({
+      success: false,
+      message: "error",
+      data: { details: "Failed to link billing profile to user." },
     });
   }
 
