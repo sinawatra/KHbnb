@@ -1,5 +1,3 @@
 # Bootcamp Project
 
-To get started, install the dependency.
-
-run: npm install
+To get started run: npm install
