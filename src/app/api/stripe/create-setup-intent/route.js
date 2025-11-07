@@ -6,7 +6,8 @@ import { cookies } from "next/headers"; // ✅ Import Next.js cookies
 export async function POST() {
   try {
     // 1. Create a server-side Supabase client
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies(); // ✅ Await it
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // 2. Get the user's session from the cookies
     const {
