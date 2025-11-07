@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"; // ✅ Import Supabase server helper
-import { cookies } from "next/headers"; // ✅ Import Next.js cookies
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export async function GET() {
   try {
