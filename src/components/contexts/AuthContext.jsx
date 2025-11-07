@@ -1,5 +1,11 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const AuthContext = createContext();
@@ -15,7 +21,9 @@ export function AuthProvider({ children }) {
       try {
         const { data, error } = await supabase
           .from("users")
-          .select("user_id, full_name, email, phone_number, avatar_url, stripe_customer_id")
+          .select(
+            "user_id, full_name, email, phone_number, avatar_url, stripe_customer_id"
+          )
           .eq("user_id", userId)
           .single();
 
@@ -85,11 +93,7 @@ export function AuthProvider({ children }) {
     const result = await response.json();
 
     if (result.success) {
-      localStorage.setItem("session", JSON.stringify(result.data.session));
-      localStorage.setItem("role", result.data.role);
-      setUser(result.data);
-      await fetchUserProfile(result.data.session.user.id);
-      return { success: true };
+      return { success: true, message: result.data.details };
     }
 
     return { success: false, error: result.data.details };
