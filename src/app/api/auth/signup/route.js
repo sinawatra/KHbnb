@@ -1,10 +1,11 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
 export async function POST(request) {
-  const { fullName, email, password } = await request.json();
+  const { fullName, email, password, phone_number } = await request.json();
 
   if (!fullName || !email || !password) {
     return NextResponse.json({
@@ -17,7 +18,6 @@ export async function POST(request) {
   const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // ONLY Step 1 is needed now. The trigger handles the rest.
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -36,7 +36,8 @@ export async function POST(request) {
     });
   }
 
-  if (!authData.user) {
+  const user = authData.user;
+  if (!user) {
     return NextResponse.json({
       success: false,
       message: "error",
@@ -45,19 +46,19 @@ export async function POST(request) {
   }
 
   let customerId;
+
   try {
     const customer = await stripe.customers.create({
-      email: authData.user.email,
+      email: user.email,
       name: fullName,
       metadata: {
-        supabase_user_id: authData.user.id,
+        supabase_user_id: user.id,
       },
     });
     customerId = customer.id;
   } catch (stripeError) {
     console.error("Stripe customer creation failed:", stripeError.message);
-    await supabase.auth.admin.deleteUser(authData.user.id);
-
+    await supabase.auth.admin.deleteUser(user.id);
     return NextResponse.json({
       success: false,
       message: "error",
@@ -65,15 +66,30 @@ export async function POST(request) {
     });
   }
 
-  // Save the Stripe ID
-  const { error: updateError } = await supabase
-    .from("users")
-    .update({ stripe_customer_id: customerId })
-    .eq("user_id", authData.user.id);
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
 
-  if (updateError) {
-    console.error("Failed to save stripe_customer_id:", updateError.message);
-    await supabase.auth.admin.deleteUser(authData.user.id);
+  const { error: insertError } = await supabaseAdmin.from("users").insert({
+    user_id: user.id,
+    email: user.email,
+    full_name: fullName,
+    stripe_customer_id: customerId,
+    phone_number: phone_number,
+    role: "user",
+  });
+
+  if (insertError) {
+    console.error("Failed to save user profile:", insertError.message);
+    
+    await supabase.auth.admin.deleteUser(user.id);
     await stripe.customers.del(customerId);
 
     return NextResponse.json({
@@ -83,7 +99,7 @@ export async function POST(request) {
     });
   }
 
-  // SUCCESS RESPONSE
+  // SUCCESS!
   return NextResponse.json({
     success: true,
     message: "successful",
