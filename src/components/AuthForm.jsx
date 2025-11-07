@@ -36,7 +36,9 @@ export default function AuthForm() {
     const result = await login(loginEmail, loginPassword);
 
     if (result.success) {
-      router.push("/");
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect") || "/";
+      router.push(redirect);
     } else {
       setLoginError(result.error || "Invalid login credentials");
     }

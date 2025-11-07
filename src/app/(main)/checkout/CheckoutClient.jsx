@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/contexts/AuthContext";
-import CheckoutProgressBar from "@/components/CheckoutProgressBar";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -16,20 +15,6 @@ import {
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 );
-
-const STEPS_CONFIG = [
-  { id: 1, route: "confirm-and-pay" },
-  { id: 2, route: "payment" },
-  { id: 3, route: "review" },
-];
-
-function getStepIdFromRoute(route) {
-  const step = STEPS_CONFIG.find((s) => s.route === route);
-  if (step) {
-    return step.id;
-  }
-  return 1;
-}
 
 function CheckoutForm() {
   const stripe = useStripe();
@@ -82,7 +67,7 @@ function StripePaymentForm({ bookingTotal }) {
 
   useEffect(() => {
     if (bookingTotal > 0) {
-      fetch("/api/create-payment-intent", {
+      fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ total: bookingTotal }),
@@ -124,14 +109,21 @@ function StripePaymentForm({ bookingTotal }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
   const [bookingData, setBookingData] = useState(null);
   const step = searchParams.get("step") || "confirm-and-pay";
-  const [completedSteps, setCompletedSteps] = useState(["login"]);
-  const currentRoute = searchParams.get("step");
-  const currentStepNumber = getStepIdFromRoute(currentRoute);
+  const [savedCards, setSavedCards] = useState([]);
+  const [useNewCard, setUseNewCard] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
+    if (!loading && !user) {
+      router.push("/register?redirect=/checkout?step=confirm-and-pay");
+      return;
+    }
+
     const data = sessionStorage.getItem("bookingData");
     if (!data) {
       if (step !== "success") {
@@ -140,7 +132,22 @@ export default function CheckoutPage() {
       return;
     }
     setBookingData(JSON.parse(data));
-  }, [router, step]);
+  }, [router, step, loading, user]);
+
+  useEffect(() => {
+    if (user?.session) {
+      fetch("/api/stripe/list-payment-methods")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.paymentMethods?.length > 0) {
+            setSavedCards(data.paymentMethods);
+          } else {
+            setUseNewCard(true);
+          }
+        })
+        .catch(() => setUseNewCard(true));
+    }
+  }, [user]);
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);
@@ -149,6 +156,44 @@ export default function CheckoutPage() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const handleSavedCardPayment = async () => {
+    if (!selectedCardId) {
+      console.error("No card selected.");
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/stripe/create-payment-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentMethodId: selectedCardId,
+          customerId: user.stripe_customer_id,
+          total: bookingData.total,
+        }),
+      });
+
+      const paymentResult = await response.json();
+
+      if (paymentResult.error) {
+        console.error(paymentResult.error);
+        setErrorMessage(paymentResult.error);
+      } else {
+        console.log("Payment successful:", paymentResult);
+        router.push(`/checkout?step=success`);
+      }
+    } catch (error) {
+      console.error("An error occurred:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (step === "success") {
@@ -204,7 +249,7 @@ export default function CheckoutPage() {
             </button>
             <button
               onClick={handlePrint}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 rounded-lg bg-primary text-white font-semibold hover:bg-red-700 hover:cursor-pointer"
             >
               Print Invoice
             </button>
@@ -297,7 +342,7 @@ export default function CheckoutPage() {
                   <tr className="text-left text-xs text-gray-500">
                     <th className="pb-3 font-medium uppercase w-1/3">
                       Item detail
-                    </th>{" "}
+                    </th>
                     {/* Adjusted width */}
                     <th className="pb-3 font-medium uppercase text-center">
                       Date
@@ -414,14 +459,7 @@ export default function CheckoutPage() {
   // HANDLE "CONFIRM AND PAY" STEP
   if (step === "confirm-and-pay") {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="border-b bg-white">
-          <CheckoutProgressBar
-            currentStep={currentStepNumber}
-            completedSteps={completedSteps}
-          />
-        </div>
-
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="grid grid-cols-2 gap-24">
             {/* Left Side - Payment Form */}
@@ -431,21 +469,95 @@ export default function CheckoutPage() {
                   Log in or sign up
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Logged in as Joe (Completed)
+                  Logged in as{" "}
+                  {user?.profile?.full_name ||
+                    user?.session?.user?.email ||
+                    "User"}{" "}
                 </p>
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold mb-4">
-                  Add a payment method
-                </h2>
-                <StripePaymentForm bookingTotal={bookingData.total} />
+                <h2 className="text-xl font-semibold mb-4">Payment method</h2>
+
+                {savedCards.length > 0 && !useNewCard ? (
+                  <div className="space-y-4">
+                    {savedCards.map((card) => (
+                      <div
+                        key={card.id}
+                        className={`border rounded-lg p-4 flex justify-between items-center ${
+                          selectedCardId === card.id
+                            ? "border-red-600 ring-1 ring-red-600"
+                            : ""
+                        }`}
+                      >
+                        <div>
+                          <p className="font-semibold">
+                            •••• {card.card.last4}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Expires {card.card.exp_month}/{card.card.exp_year}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setSelectedCardId(card.id)}
+                          disabled={selectedCardId === card.id}
+                          className={`font-semibold ${
+                            selectedCardId === card.id
+                              ? "text-gray-500"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedCardId === card.id
+                            ? "Selected"
+                            : "Use this card"}
+                        </button>
+                      </div>
+                    ))}
+
+                    {selectedCardId && (
+                      <button
+                      type="button"
+                        onClick={handleSavedCardPayment}
+                        disabled={isLoading}
+                        className="w-full bg-red-600 text-white font-semibold py-3 rounded-lg mt-4 hover:bg-red-700 transition-colors"
+                      >
+                        Confirm and Pay with ••••{" "}
+                        {
+                          savedCards.find((card) => card.id === selectedCardId)
+                            ?.card.last4
+                        }
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setUseNewCard(true)}
+                      className="text-sm text-gray-600 underline pt-2"
+                    >
+                      Add a new card
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {savedCards.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setUseNewCard(false);
+                          setSelectedCardId(null);
+                        }}
+                        className="text-sm text-gray-600 underline mb-4"
+                      >
+                        ← Use saved card
+                      </button>
+                    )}
+                    <StripePaymentForm bookingTotal={bookingData.total} />
+                  </>
+                )}
               </div>
             </div>
 
             {/* Right Side - Booking Summary */}
             <div>
-              <div className="border rounded-xl p-6 sticky top-24">
+              <div className="border rounded-xl p-6 sticky top-24 bg-white">
                 <div className="flex gap-4 pb-6 border-b mb-6">
                   <div className="relative w-32 h-24 rounded-lg overflow-hidden flex-shrink-0">
                     <Image
