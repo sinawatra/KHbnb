@@ -137,8 +137,7 @@ export async function POST(request) {
     host_name: formData.get('host_name'),
     host_phone: formData.get('host_phone'),
     host_email: formData.get('host_email'),
-    status: formData.get('status'), // <-- FIXED (was 'is_featured')
-    // is_featured can be set separately if needed
+    status: formData.get('status'),
     owner_id: adminUser.id,
   };
 
