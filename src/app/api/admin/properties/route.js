@@ -2,14 +2,6 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-// =================================================================
-//  HELPER FUNCTIONS
-// =================================================================
-
-/**
- * A helper to check if the current user is an admin.
- * Returns the user object if they are an admin, otherwise null.
- */
 async function getAdminUser(supabase) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -26,10 +18,6 @@ async function getAdminUser(supabase) {
   return (profile && profile.role === 'admin') ? user : null;
 }
 
-/**
- * A helper to upload an array of image files to a property folder.
- * Returns an array of public URLs.
- */
 async function uploadPropertyImages(supabase, images, propertyId) {
   const imageUrls = [];
   if (!images || images.length === 0) {
@@ -46,7 +34,7 @@ async function uploadPropertyImages(supabase, images, propertyId) {
       const fileName = `${propertyId}/${Date.now()}-${image.name}`;
 
       const { error } = await supabase.storage
-        .from('properties') // Our 'properties' bucket
+        .from('properties')
         .upload(fileName, image);
 
       if (error) {
@@ -63,11 +51,6 @@ async function uploadPropertyImages(supabase, images, propertyId) {
 
   return imageUrls;
 }
-
-
-// =================================================================
-// MAIN API ENDPOINTS
-// =================================================================
 
 /**
  * GET: Handles fetching all properties for the admin dashboard.
