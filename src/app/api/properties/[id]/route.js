@@ -19,6 +19,7 @@ export async function GET(request, { params }) {
       provinces ( name )
     `)
     .eq('properties_id', propertyId)
+    .eq('status', 'active')
     .single(); // We only expect one result
 
   if (error || !property) {
