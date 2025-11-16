@@ -40,49 +40,50 @@ export async function POST(req) {
 
   try {
     switch (event.type) {
-      // When checkout completes (first subscription or reactivation)
-      case "checkout.session.completed": {
-        const session = event.data.object;
+      // When a subscription is first created (your flow uses direct API)
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object;
 
-        if (session.mode === "subscription") {
-          const subscription = await stripe.subscriptions.retrieve(
-            session.subscription
-          );
-          const priceId = subscription.items.data[0].price.id;
+        // Only process active subscriptions
+        if (subscription.status !== "active") break;
 
-          // Get user
-          const { data: user } = await supabaseAdmin
-            .from("users")
-            .select("id")
-            .eq("stripe_customer_id", session.customer)
-            .single();
+        const priceId = subscription.items.data[0].price.id;
 
-          if (!user) {
-            console.error("User not found for customer:", session.customer);
-            break;
-          }
+        // Get user
+        const { data: user } = await supabaseAdmin
+          .from("users")
+          .select("id")
+          .eq("stripe_customer_id", subscription.customer)
+          .single();
 
-          // Get plan from your DB
-          const { data: plan } = await supabaseAdmin
-            .from("subscription_plans")
-            .select("id")
-            .eq("stripe_price_id", priceId)
-            .single();
+        if (!user) {
+          console.error("User not found for customer:", subscription.customer);
+          break;
+        }
 
-          if (!plan) {
-            console.error("Plan not found for price:", priceId);
-            break;
-          }
+        // Get plan from your DB
+        const { data: plan } = await supabaseAdmin
+          .from("subscription_plans")
+          .select("id")
+          .eq("stripe_price_id", priceId)
+          .single();
 
-          // Deactivate old subscriptions
-          await supabaseAdmin
-            .from("user_subscriptions")
-            .update({ status: "inactive" })
-            .eq("user_id", user.id)
-            .eq("status", "active");
+        if (!plan) {
+          console.error("Plan not found for price:", priceId);
+          break;
+        }
 
-          // Create new subscription record
-          await supabaseAdmin.from("user_subscriptions").insert({
+        // Deactivate old subscriptions
+        await supabaseAdmin
+          .from("user_subscriptions")
+          .update({ status: "inactive" })
+          .eq("user_id", user.id)
+          .eq("status", "active");
+
+        // Create or update subscription record
+        const { error } = await supabaseAdmin.from("user_subscriptions").upsert(
+          {
             user_id: user.id,
             subscription_plans_id: plan.id,
             stripe_subscription_id: subscription.id,
@@ -93,8 +94,15 @@ export async function POST(req) {
               subscription.current_period_end * 1000
             ).toISOString(),
             status: "active",
-          });
+          },
+          {
+            onConflict: "stripe_subscription_id",
+          }
+        );
 
+        if (error) {
+          console.error("Supabase error:", error);
+        } else {
           console.log(`✅ Subscription activated for user ${user.id}`);
         }
         break;
@@ -156,7 +164,7 @@ export async function POST(req) {
           .from("user_subscriptions")
           .update({
             status: "inactive",
-            end_date: new Date().toISOString(),
+            end_date: new Date().toISOString(), // Mark as ended now
           })
           .eq("stripe_subscription_id", subscription.id);
 
