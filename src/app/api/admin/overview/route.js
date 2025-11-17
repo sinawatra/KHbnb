@@ -108,7 +108,7 @@ export async function GET(request) {
       properties ( title )
     `
     )
-    .order("booked_at", { ascending: false }) // <-- FIXED
+    .order("booked_at", { ascending: false })
     .limit(5);
 
   // Query 2: Get the 5 most recent properties
