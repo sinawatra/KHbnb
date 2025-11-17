@@ -6,7 +6,6 @@ import { NextResponse } from "next/server";
 async function getAdminUser(supabase, request) {
   let user = null;
 
-  // Try cookie-based auth first (for browser)
   const {
     data: { user: cookieUser },
   } = await supabase.auth.getUser();
@@ -14,12 +13,10 @@ async function getAdminUser(supabase, request) {
   if (cookieUser) {
     user = cookieUser;
   } else {
-    // Check Authorization header (for external apps/API calls)
     const authHeader = request.headers.get("authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
 
-      // Use SERVICE ROLE key to validate any JWT
       const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -43,11 +40,19 @@ async function getAdminUser(supabase, request) {
     return null;
   }
 
-  const { data: profile } = await supabase
+  // Use service role client to bypass RLS
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const { data: profile } = await supabaseAdmin
     .from("users")
     .select("role")
     .eq("user_id", user.id)
     .single();
+
+  console.log("Profile role:", profile?.role);
 
   return profile && profile.role === "admin" ? user : null;
 }
