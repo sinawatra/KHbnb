@@ -1,10 +1,12 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 async function getAdminUser(supabase, request) {
-  // Try to get user from session (cookies) first
   let user = null;
+
+  // Try cookie-based auth first (for browser)
   const {
     data: { user: cookieUser },
   } = await supabase.auth.getUser();
@@ -12,13 +14,27 @@ async function getAdminUser(supabase, request) {
   if (cookieUser) {
     user = cookieUser;
   } else {
-    // If no cookie session, check Authorization header
+    // Check Authorization header (for external apps/API calls)
     const authHeader = request.headers.get("authorization");
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
+
+      // Create a new supabase client with the token
+      const supabaseWithToken = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        }
+      );
+
       const {
         data: { user: tokenUser },
-      } = await supabase.auth.getUser(token);
+      } = await supabaseWithToken.auth.getUser();
       user = tokenUser;
     }
   }
@@ -39,17 +55,16 @@ async function getAdminUser(supabase, request) {
 async function uploadPropertyImages(supabase, images, propertyId) {
   const imageUrls = [];
   if (!images || images.length === 0) {
-    return imageUrls; // No images, just return empty array
+    return imageUrls;
   }
 
   console.log(
     `Uploading ${images.length} images for property ${propertyId}...`
   );
 
-  // We use Promise.all to run all uploads in parallel
   await Promise.all(
     images.map(async (image) => {
-      if (!image || image.size === 0) return; // Skip empty file inputs
+      if (!image || image.size === 0) return;
 
       const fileName = `${propertyId}/${Date.now()}-${image.name}`;
 
@@ -60,7 +75,6 @@ async function uploadPropertyImages(supabase, images, propertyId) {
       if (error) {
         console.error(`Failed to upload ${image.name}:`, error.message);
       } else {
-        // If upload is successful, get the public URL
         const { data: publicUrlData } = supabase.storage
           .from("properties")
           .getPublicUrl(fileName);
@@ -72,14 +86,10 @@ async function uploadPropertyImages(supabase, images, propertyId) {
   return imageUrls;
 }
 
-/**
- * GET: Handles fetching all properties for the admin dashboard.
- */
 export async function GET(request) {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // 1. Security: Check for admin
   const adminUser = await getAdminUser(supabase, request);
   if (!adminUser) {
     return NextResponse.json(
@@ -92,7 +102,6 @@ export async function GET(request) {
     );
   }
 
-  // 2. Logic: Fetch all properties
   console.log("Admin fetching all properties...");
   const { data: properties, error } = await supabase.from("properties").select(`
       *,
@@ -106,7 +115,6 @@ export async function GET(request) {
     );
   }
 
-  // 3. Response: Success
   return NextResponse.json({
     success: true,
     message: "successful",
@@ -114,14 +122,10 @@ export async function GET(request) {
   });
 }
 
-/**
- * POST: Handles creating a new property.
- */
 export async function POST(request) {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // 1. Security: Check for admin
   const adminUser = await getAdminUser(supabase, request);
   if (!adminUser) {
     return NextResponse.json(
@@ -134,7 +138,6 @@ export async function POST(request) {
     );
   }
 
-  // 2. Parse the Form Data
   const formData = await request.formData();
   const images = formData.getAll("images");
   const amenities = JSON.parse(formData.get("amenities") || "[]");
@@ -156,7 +159,6 @@ export async function POST(request) {
     owner_id: adminUser.id,
   };
 
-  // 3. Create the Property
   const { data: newProperty, error: insertError } = await supabase
     .from("properties")
     .insert(propertyData)
@@ -175,14 +177,12 @@ export async function POST(request) {
     );
   }
 
-  // 4. Upload Images
   const imageUrls = await uploadPropertyImages(
     supabase,
     images,
     newProperty.properties_id
   );
 
-  // 5. Final Step: Update property with image URLs
   const { data: finalProperty, error: updateError } = await supabase
     .from("properties")
     .update({ image_urls: imageUrls })
@@ -202,7 +202,6 @@ export async function POST(request) {
     );
   }
 
-  // 6. All done!
   return NextResponse.json({
     success: true,
     message: "Property created successfully",
