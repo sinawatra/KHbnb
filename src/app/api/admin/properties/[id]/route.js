@@ -1,6 +1,4 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 // =================================================================
@@ -11,36 +9,32 @@ import { NextResponse } from "next/server";
  * Checks if the current user is an admin.
  * Returns the user object if they are an admin, otherwise null.
  */
-async function getAdminUser(supabase, request) {
+async function getAdminUser(request) {
   let user = null;
 
-  const {
-    data: { user: cookieUser },
-  } = await supabase.auth.getUser();
+  // 1. Get Token from Authorization Header (The only source for curl)
+  const authHeader = request.headers.get("authorization");
 
-  if (cookieUser) {
-    user = cookieUser;
-  } else {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
 
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-
-      const { data, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (data?.user) {
-        user = data.user;
+    // 2. Client to Validate Token (Must use Service Role Key)
+    const supabaseAdminAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
       }
+    );
+
+    // 3. Validate the Token
+    const { data } = await supabaseAdminAuth.auth.getUser(token);
+
+    if (data?.user) {
+      user = data.user;
     }
   }
 
@@ -48,13 +42,13 @@ async function getAdminUser(supabase, request) {
     return null;
   }
 
-  // Use service role client to bypass RLS
-  const supabaseAdmin = createClient(
+  // 4. Client for Role Check (Must use Service Role Key to bypass RLS)
+  const supabaseAdminRoleCheck = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const { data: profile } = await supabaseAdmin
+  const { data: profile } = await supabaseAdminRoleCheck
     .from("users")
     .select("role")
     .eq("user_id", user.id)
@@ -126,13 +120,17 @@ async function deletePropertyImages(supabase, imageUrls) {
  * GET: Fetches a single property's details.
  * (Used to fill the "Edit Property" form [cite: image_e0dd09.png])
  */
-export async function GET(request, { params }) {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-  const propertyId = params.id;
+export async function GET(request) {
+  const urlParts = new URL(request.url).pathname.split("/");
+  const propertyId = urlParts[urlParts.length - 1];
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
   // 1. Security: Check for admin
-  if (!(await getAdminUser(supabase, request))) {
+  if (!(await getAdminUser(request))) {
     return NextResponse.json(
       {
         success: false,
@@ -146,7 +144,7 @@ export async function GET(request, { params }) {
   // 2. Logic: Fetch this specific property
   const { data: property, error } = await supabase
     .from("properties")
-    .select("*, provinces(name)")
+    .select("*")
     .eq("properties_id", propertyId)
     .single();
 
@@ -172,13 +170,17 @@ export async function GET(request, { params }) {
 /**
  * PUT: Handles updating an existing property from the edit form.
  */
-export async function PUT(request, { params }) {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-  const propertyId = params.id;
+export async function PUT(request) {
+  const urlParts = new URL(request.url).pathname.split("/");
+  const propertyId = urlParts[urlParts.length - 1];
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
   // 1. Security: Check for admin
-  if (!(await getAdminUser(supabase, request))) {
+  if (!(await getAdminUser(request))) {
     return NextResponse.json(
       {
         success: false,
@@ -271,7 +273,7 @@ export async function PUT(request, { params }) {
     .from("properties")
     .update(propertyUpdates)
     .eq("properties_id", propertyId)
-    .select("*, provinces(name)")
+    .select("*")
     .single();
 
   if (updateError) {
@@ -296,13 +298,17 @@ export async function PUT(request, { params }) {
 /**
  * DELETE: Deletes a property.
  */
-export async function DELETE(request, { params }) {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-  const propertyId = params.id;
+export async function DELETE(request) {
+  const urlParts = new URL(request.url).pathname.split("/");
+  const propertyId = urlParts[urlParts.length - 1];
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
   // 1. Security: Check for admin
-  if (!(await getAdminUser(supabase, request))) {
+  if (!(await getAdminUser(request))) {
     return NextResponse.json(
       {
         success: false,
@@ -310,6 +316,25 @@ export async function DELETE(request, { params }) {
         data: { details: "Forbidden: Admin access required." },
       },
       { status: 403 }
+    );
+  }
+
+  const { error: bookingDeleteError } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("property_id", propertyId);
+
+  if (bookingDeleteError) {
+    console.error("Booking deletion failed:", bookingDeleteError.message);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "error",
+        data: {
+          details: `Failed to clean up bookings: ${bookingDeleteError.message}`,
+        },
+      },
+      { status: 500 }
     );
   }
 
