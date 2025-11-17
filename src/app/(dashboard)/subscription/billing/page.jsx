@@ -17,7 +17,7 @@ const plans = {
     badge: "save 10%",
   },
   monthly: {
-    priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
+    priceId: "price_1SSJwTDozsimq2UIcpm61UDn",
     name: "Monthly",
     price: "$5.00",
     billing: "Billed as one payment of $5 /monthly",

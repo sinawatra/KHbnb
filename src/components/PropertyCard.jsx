@@ -8,12 +8,20 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export default function PropertyCard({ property }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  const images = Array.isArray(property.image_urls)
+    ? property.image_urls
+    : typeof property.image_urls === "string"
+    ? JSON.parse(property.image_urls || "[]")
+    : [];
+
+  const safeImages = images.length ? images : ["/beachvilla.jpg"];
+
   const goToPrevious = (e) => {
     e.stopPropagation();
     e.preventDefault();
     const isFirstSlide = currentIndex === 0;
     const newIndex = isFirstSlide
-      ? property.images.length - 1
+      ? safeImages.length - 1
       : currentIndex - 1;
     setCurrentIndex(newIndex);
   };
@@ -21,23 +29,21 @@ export default function PropertyCard({ property }) {
   const goToNext = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    const isLastSlide = currentIndex === property.images.length - 1;
+    const isLastSlide = currentIndex === safeImages.length - 1;
     const newIndex = isLastSlide ? 0 : currentIndex + 1;
     setCurrentIndex(newIndex);
   };
 
   return (
     <Link href={`/properties/${property.id}`} className="group block">
-
       <div className="relative overflow-hidden rounded-xl aspect-square">
-
         <Image
-          src={property.images[currentIndex]}
+          src={safeImages[currentIndex]}
           alt={property.title}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        
+
         <button
           onClick={goToPrevious}
           className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-1.5 bg-white/90 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
@@ -53,7 +59,7 @@ export default function PropertyCard({ property }) {
         </button>
 
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
-          {property.images.map((_, index) => (
+          {safeImages.map((_, index) => (
             <div
               key={index}
               className={`h-1.5 w-1.5 rounded-full ${
@@ -71,7 +77,7 @@ export default function PropertyCard({ property }) {
         <p className="text-sm text-gray-600">{property.distance}</p>
         <p className="text-sm text-gray-600">{property.dates}</p>
         <div className="mt-1">
-          <span className="font-bold">${property.pricePerNight}</span>
+          <span className="font-bold">${property.price_per_night}</span>
           <span className="text-sm text-gray-600">/ night</span>
         </div>
       </div>

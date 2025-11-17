@@ -1,60 +1,87 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
-// =================================================================
-//  HELPER FUNCTIONS
-// =================================================================
+async function getAdminUser(supabase, request) {
+  let user = null;
 
-/**
- * A helper to check if the current user is an admin.
- * Returns the user object if they are an admin, otherwise null.
- */
-async function getAdminUser(supabase) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user: cookieUser },
+  } = await supabase.auth.getUser();
+
+  if (cookieUser) {
+    user = cookieUser;
+  } else {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
+
+      const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (data?.user) {
+        user = data.user;
+      }
+    }
+  }
+
   if (!user) {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('user_id', user.id)
+  // Use service role client to bypass RLS
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const { data: profile } = await supabaseAdmin
+    .from("users")
+    .select("role")
+    .eq("user_id", user.id)
     .single();
-    
-  // Return the user only if they are an admin
-  return (profile && profile.role === 'admin') ? user : null;
+
+  console.log("Profile role:", profile?.role);
+
+  return profile && profile.role === "admin" ? user : null;
 }
 
-/**
- * A helper to upload an array of image files to a property folder.
- * Returns an array of public URLs.
- */
 async function uploadPropertyImages(supabase, images, propertyId) {
   const imageUrls = [];
   if (!images || images.length === 0) {
-    return imageUrls; // No images, just return empty array
+    return imageUrls;
   }
 
-  console.log(`Uploading ${images.length} images for property ${propertyId}...`);
+  console.log(
+    `Uploading ${images.length} images for property ${propertyId}...`
+  );
 
-  // We use Promise.all to run all uploads in parallel
   await Promise.all(
     images.map(async (image) => {
-      if (!image || image.size === 0) return; // Skip empty file inputs
+      if (!image || image.size === 0) return;
 
       const fileName = `${propertyId}/${Date.now()}-${image.name}`;
 
       const { error } = await supabase.storage
-        .from('properties') // Our 'properties' bucket
+        .from("properties")
         .upload(fileName, image);
 
       if (error) {
         console.error(`Failed to upload ${image.name}:`, error.message);
       } else {
-        // If upload is successful, get the public URL
         const { data: publicUrlData } = supabase.storage
-          .from('properties')
+          .from("properties")
           .getPublicUrl(fileName);
         imageUrls.push(publicUrlData.publicUrl);
       }
@@ -64,120 +91,125 @@ async function uploadPropertyImages(supabase, images, propertyId) {
   return imageUrls;
 }
 
-
-// =================================================================
-// MAIN API ENDPOINTS
-// =================================================================
-
-/**
- * GET: Handles fetching all properties for the admin dashboard.
- */
 export async function GET(request) {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // 1. Security: Check for admin
-  const adminUser = await getAdminUser(supabase);
+  const adminUser = await getAdminUser(supabase, request);
   if (!adminUser) {
     return NextResponse.json(
-      { success: false, message: 'error', data: { details: 'Forbidden: Admin access required.' } },
+      {
+        success: false,
+        message: "error",
+        data: { details: "Forbidden: Admin access required." },
+      },
       { status: 403 }
     );
   }
 
-  // 2. Logic: Fetch all properties
-  console.log('Admin fetching all properties...');
-  const { data: properties, error } = await supabase
-    .from('properties')
-    .select(`
+  console.log("Admin fetching all properties...");
+  const { data: properties, error } = await supabase.from("properties").select(`
       *,
       provinces ( name )
     `);
 
   if (error) {
-    return NextResponse.json({ success: false, message: 'error', data: { details: error.message } }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "error", data: { details: error.message } },
+      { status: 500 }
+    );
   }
-  
-  // 3. Response: Success
+
   return NextResponse.json({
     success: true,
-    message: 'successful',
-    data: properties
+    message: "successful",
+    data: properties,
   });
 }
 
-/**
- * POST: Handles creating a new property.
- */
 export async function POST(request) {
   const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-  // 1. Security: Check for admin
-  const adminUser = await getAdminUser(supabase);
+  const adminUser = await getAdminUser(supabase, request);
   if (!adminUser) {
-    return NextResponse.json({ success: false, message: 'error', data: { details: 'Forbidden: Admin access required.' } }, { status: 403 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "error",
+        data: { details: "Forbidden: Admin access required." },
+      },
+      { status: 403 }
+    );
   }
 
-  // 2. Parse the Form Data
   const formData = await request.formData();
-  const images = formData.getAll('images');
-  const amenities = JSON.parse(formData.get('amenities') || '[]');
+  const images = formData.getAll("images");
+  const amenities = JSON.parse(formData.get("amenities") || "[]");
 
   const propertyData = {
-    title: formData.get('title'),
-    description: formData.get('description'),
-    price_per_night: parseFloat(formData.get('price_per_night')),
-    max_guests: parseInt(formData.get('max_guests')),
-    num_bedrooms: parseInt(formData.get('num_bedrooms')),
+    title: formData.get("title"),
+    description: formData.get("description"),
+    price_per_night: parseFloat(formData.get("price_per_night")),
+    max_guests: parseInt(formData.get("max_guests")),
+    num_bedrooms: parseInt(formData.get("num_bedrooms")),
     amenities: amenities,
-    latitude: parseFloat(formData.get('latitude')),
-    longitude: parseFloat(formData.get('longitude')),
-    province_id: parseInt(formData.get('province_id')),
-    host_name: formData.get('host_name'),
-    host_phone: formData.get('host_phone'),
-    host_email: formData.get('host_email'),
-    status: formData.get('status'), // <-- FIXED (was 'is_featured')
-    // is_featured can be set separately if needed
+    latitude: parseFloat(formData.get("latitude")),
+    longitude: parseFloat(formData.get("longitude")),
+    province_id: parseInt(formData.get("province_id")),
+    host_name: formData.get("host_name"),
+    host_phone: formData.get("host_phone"),
+    host_email: formData.get("host_email"),
+    status: formData.get("status"),
     owner_id: adminUser.id,
   };
 
-  // 3. Create the Property
   const { data: newProperty, error: insertError } = await supabase
-    .from('properties')
+    .from("properties")
     .insert(propertyData)
     .select()
     .single();
 
   if (insertError) {
-    console.error('Property insert error:', insertError.message);
-    return NextResponse.json({ success: false, message: 'error', data: { details: insertError.message } }, { status: 500 });
+    console.error("Property insert error:", insertError.message);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "error",
+        data: { details: insertError.message },
+      },
+      { status: 500 }
+    );
   }
 
-  // 4. Upload Images
   const imageUrls = await uploadPropertyImages(
     supabase,
     images,
     newProperty.properties_id
   );
 
-  // 5. Final Step: Update property with image URLs
   const { data: finalProperty, error: updateError } = await supabase
-    .from('properties')
+    .from("properties")
     .update({ image_urls: imageUrls })
-    .eq('properties_id', newProperty.properties_id)
-    .select('*, provinces(name)')
+    .eq("properties_id", newProperty.properties_id)
+    .select("*, provinces(name)")
     .single();
-  
+
   if (updateError) {
-    console.error('Image URL update error:', updateError.message);
-    return NextResponse.json({ success: false, message: 'error', data: { details: updateError.message } }, { status: 500 });
+    console.error("Image URL update error:", updateError.message);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "error",
+        data: { details: updateError.message },
+      },
+      { status: 500 }
+    );
   }
 
-  // 6. All done!
   return NextResponse.json({
     success: true,
-    message: 'Property created successfully',
+    message: "Property created successfully",
     data: finalProperty,
   });
 }

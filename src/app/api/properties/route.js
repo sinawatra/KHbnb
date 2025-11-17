@@ -1,11 +1,12 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
-  const cookieStore = cookies();
   // We use the 'server' client, as this is a public route
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore }); 
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
   
   // Get the URL search parameters
   // (e.g., /api/properties?province=Kampot&guests=2)
@@ -14,14 +15,13 @@ export async function GET(request) {
   const guests = searchParams.get('guests');
 
   // Start building the query
-  // We don't need .eq('is_featured', true) because our RLS policy
-  // handles this for us automatically.
   let query = supabase
     .from('properties')
     .select(`
       *,
       provinces ( name )
-    `);
+    `)
+    .eq('status', 'active');
 
   // Add filters if they exist
   if (provinceName) {

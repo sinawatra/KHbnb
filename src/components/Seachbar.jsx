@@ -17,6 +17,7 @@ import {
   CommandItem,
 } from "./ui/command";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 const provinces = [
   "Phnom Penh",
@@ -28,8 +29,10 @@ const provinces = [
 ];
 
 export default function Searchbar() {
+  const router = useRouter();
   const [date, setDate] = useState({ from: undefined, to: undefined });
   const [location, setLocation] = useState("");
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
 
   const formatDate = (dateObj) => {
     if (!dateObj) return "Add dates";
@@ -39,9 +42,18 @@ export default function Searchbar() {
     });
   };
 
+  const handleSearch = () => {
+    if (location) {
+      const url = `/properties?province=${encodeURIComponent(location)}`;
+      router.push(url);
+    } else {
+      alert("Please select a province before searching.");
+    }
+  };
+
   return (
     <div className="pl-2 bg-white border-2 border-gray-300 rounded-full flex w-full max-w-5xl items-center">
-      <Popover>
+      <Popover open={isLocationOpen} onOpenChange={setIsLocationOpen}>
         <PopoverTrigger asChild>
           <div className="flex-1 px-6 py-3 border-r flex items-center gap-3 cursor-pointer">
             <FlagTriangleRight />
@@ -71,6 +83,7 @@ export default function Searchbar() {
                     key={province}
                     onSelect={() => {
                       setLocation(province);
+                      setIsLocationOpen(false);
                     }}
                   >
                     {province}
@@ -206,7 +219,10 @@ export default function Searchbar() {
       </Popover>
 
       {/* Search Button */}
-      <Button className="rounded-full p-3 mr-2 align-center self-center">
+      <Button
+        className="rounded-full p-3 mr-2 align-center self-center"
+        onClick={handleSearch}
+      >
         <Search />
       </Button>
     </div>
