@@ -1,7 +1,7 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 // =================================================================
 //  HELPER FUNCTION
@@ -11,12 +11,12 @@ import { createClient } from '@supabase/supabase-js';
  * Checks if the current user is an admin.
  * Returns the user object if they are an admin, otherwise null.
  */
-async function getAdminUser(supabase, request) {
+async function getAdminUser(supabaseCookieClient, request) {
   let user = null;
 
   const {
     data: { user: cookieUser },
-  } = await supabase.auth.getUser();
+  } = await supabaseCookieClient.auth.getUser();
 
   if (cookieUser) {
     user = cookieUser;
@@ -62,7 +62,11 @@ async function getAdminUser(supabase, request) {
 
   console.log("Profile role:", profile?.role);
 
-  return profile && profile.role === "admin" ? user : null;
+  if (profile && profile.role === "admin") {
+    return { user, adminClient: supabaseAdmin };
+  }
+
+  return null;
 }
 
 // =================================================================
@@ -78,8 +82,8 @@ export async function GET(request) {
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // 1. Security: Check for admin
-  const adminUser = await getAdminUser(supabase, request);
-  if (!adminUser) {
+  const authResult = await getAdminUser(supabase, request);
+  if (!authResult) {
     return NextResponse.json(
       {
         success: false,
@@ -90,37 +94,40 @@ export async function GET(request) {
     );
   }
 
+  const { adminClient } = authResult;
+
   // 2. Logic: We'll run our queries in parallel for speed
   console.log("Admin fetching overview data...");
 
   // Query 1: Get the 5 most recent bookings
-  const recentBookingsQuery = supabase
+  const recentBookingsQuery = adminClient
     .from("bookings")
     .select(
       `
-      booking_id,
-      booked_at, 
+      id,
+      user_id,
+      property_id, 
       status,
       total_price,
       num_guests,
       check_in_date,
       check_out_date,
-      properties ( title )
+      created_at
     `
     )
-    .order("booked_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(5);
 
   // Query 2: Get the 5 most recent properties
   // Note: We need to know your properties table 'created_at' column name
   // Assuming it's 'created_at' for now.
-  const recentPropertiesQuery = supabase
+  const recentPropertiesQuery = adminClient
     .from("properties")
     .select(
       `
       title,
       price_per_night,
-      provinces ( name )
+      province_id
     `
     )
     .order("created_at", { ascending: false })
