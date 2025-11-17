@@ -91,10 +91,9 @@ export async function GET(request) {
   }
 
   // 2. Handle Pagination
-  // Get the page number from the URL (e.g., .../analytics?page=1)
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const PAGE_SIZE = 10; // You can adjust this
+  const page = parseInt(searchParams.get('page') || '1');
+  const PAGE_SIZE = 10;
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
@@ -117,8 +116,11 @@ export async function GET(request) {
     `,
       { count: "exact" } // Request the total count
     )
-    .neq("role", "admin") // Exclude other admins from the "customer" list
-    .order("created_at", { ascending: false })
+    // --- THIS IS THE FIX ---
+    // We want users where the role is 'user' OR 'is null'
+    // This correctly excludes only 'admin'
+    .or('role.eq.user,role.is.null') 
+    .order('created_at', { ascending: false })
     .range(from, to);
 
   if (error) {
