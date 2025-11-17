@@ -23,7 +23,7 @@ export async function GET() {
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id) // Use the authenticated user's ID
+      .eq("id", session.user.id) // Use the authenticated user's ID
       .single();
 
     if (error || !profile || !profile.stripe_customer_id) {
