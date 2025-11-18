@@ -78,7 +78,7 @@ async function getAdminUser(supabaseCookieClient, request) {
  * This includes recent bookings and a list of properties.
  */
 export async function GET(request) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // 1. Security: Check for admin
@@ -112,7 +112,8 @@ export async function GET(request) {
       num_guests,
       check_in_date,
       check_out_date,
-      created_at
+      created_at,
+      properties ( title )
     `
     )
     .order("created_at", { ascending: false })
@@ -127,7 +128,8 @@ export async function GET(request) {
       `
       title,
       price_per_night,
-      province_id
+      province_id,
+      provinces ( name )
     `
     )
     .order("created_at", { ascending: false })

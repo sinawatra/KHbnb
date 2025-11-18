@@ -9,7 +9,7 @@ export async function POST(request, { params }) {
   // 1. NEXT.JS 15 FIX: You must await params!
   const { id: bookingId } = await params;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   let supabase = createRouteHandlerClient({ cookies: () => cookieStore });
   let user = null;
 
