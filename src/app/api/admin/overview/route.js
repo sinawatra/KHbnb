@@ -46,6 +46,8 @@ export async function GET(request) {
     );
   }
 
+  const { adminClient } = authResult;
+
   // 2. Logic: We'll run our queries in parallel for speed
   console.log('Admin fetching overview data...');
   
