@@ -1,50 +1,22 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'; // Ensures dynamic cookie handling
 
 export async function POST(request) {
   try {
-    // 1. NEXT.JS 15: Await cookies
-    const cookieStore = await cookies();
-    let supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    let user = null;
+    const supabase = createRouteHandlerClient({ cookies });
 
-    // 2. AUTH CHECK (Hybrid: Cookies OR Bearer Token)
-    const {
-      data: { session: cookieSession },
-    } = await supabase.auth.getSession();
-
-    if (cookieSession) {
-      user = cookieSession.user;
-    } else {
-      // Fallback for Postman/cURL
-      const authHeader = request.headers.get("authorization");
-      if (authHeader?.startsWith("Bearer ")) {
-        const supabaseGeneric = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-          { global: { headers: { Authorization: authHeader } } }
-        );
-        const {
-          data: { user: tokenUser },
-        } = await supabaseGeneric.auth.getUser();
-        if (tokenUser) {
-          user = tokenUser;
-          supabase = supabaseGeneric;
-        }
-      }
+    // --- Step 1: Check if the user is logged in ---
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
     }
 
-    if (!user) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 401 });
-    }
-
-    // --- Step 3: Get input ---
+    // --- Step 2: Get all the booking details from the request body ---
     const {
-      property_id,
+      property_id, // This will be the number (bigint) from your properties table
       check_in_date,
       check_out_date,
       num_guests,
@@ -55,39 +27,38 @@ export async function POST(request) {
       billing_postal_code,
     } = await request.json();
 
-    // --- Step 4: Insert ---
+    // --- Step 3: Insert the new booking into the 'bookings' table ---
     const { data, error } = await supabase
-      .from("bookings")
+      .from('bookings')
       .insert({
-        user_id: user.id,
+        user_id: session.user.id, // The ID of the person making the booking
         property_id,
         check_in_date,
         check_out_date,
         num_guests,
         total_price,
-        status: "pending",
+        status: 'pending', // Set initial status to 'pending' (waiting for payment)
         billing_address_line1,
         billing_city,
         billing_country,
         billing_postal_code,
       })
-      .select()
-      .single();
+      .select() // Ask Supabase to return the new row
+      .single(); // Get it as a single object, not an array
 
     if (error) {
-      console.error("Error creating booking:", error);
-      return NextResponse.json(
-        { error: "Failed to create booking.", details: error.message },
-        { status: 500 }
-      );
+      // The DB will automatically check constraints (dates > 0, guests > 0)
+      // If a check fails, the error message will be sent here.
+      console.error('Error creating booking:', error);
+      return NextResponse.json({ error: 'Failed to create booking.', details: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(
-      { message: "Booking created successfully.", booking: data },
-      { status: 201 }
-    );
+    // --- Step 4: Return the newly created booking (including its ID) ---
+    // The frontend will use this ID for the next step (payment)
+    return NextResponse.json({ message: 'Booking created successfully.', booking: data }, { status: 201 }); 
+
   } catch (err) {
-    console.error("General Error:", err.message);
+    console.error('General Error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

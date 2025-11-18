@@ -1,58 +1,31 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic'; // Ensures dynamic cookie handling
 
 export async function GET(request) {
-  // 1. Setup Supabase
-  const cookieStore = await cookies();
-  let supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-  let user = null;
+  const supabase = createRouteHandlerClient({ cookies });
 
-  // 2. AUTH CHECK (Hybrid: Cookies OR Bearer Token)
-  const { data: { session: cookieSession } } = await supabase.auth.getSession();
-
-  if (cookieSession) {
-    user = cookieSession.user;
-  } else {
-    // Fallback for Postman/cURL
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const supabaseGeneric = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const { data: { user: tokenUser } } = await supabaseGeneric.auth.getUser();
-      if (tokenUser) {
-        user = tokenUser;
-        supabase = supabaseGeneric; // Use this client to bypass RLS if needed
-      }
-    }
+  // 1. Check if the user is logged in
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 
-  if (!user) {
-    return NextResponse.json({ error: "Not authorized" }, { status: 401 });
-  }
-
-  // 3. Fetch Data
-  // NOTE: Check if your column is named 'created_at' or 'booked_at'. 
-  // Your previous code used 'booked_at'.
+  // 2. Fetch all bookings where the 'user_id' matches the current user.
+  // This is the key security step that ensures users only see their own bookings.
+  // We also fetch the 'name' of the associated property for a better user experience.
   const { data, error } = await supabase
-    .from("bookings")
-    .select("*, properties(title)") 
-    .eq("user_id", user.id) 
-    .order("created_at", { ascending: false }); 
+    .from('bookings')
+    .select('*, properties(title)') // Fetches all booking columns and the property's name
+    .eq('user_id', session.user.id) // The crucial security filter
+    .order('created_at', { ascending: false }); // Show newest first
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // 4. Return Success (Status 200)
-  return NextResponse.json(
-    { success: true, booking: data },
-    { status: 200 }
-  );
+  // 3. Return the list of bookings
+  return NextResponse.json({ message: 'successful', booking: data }, { status: 201 });
 }
