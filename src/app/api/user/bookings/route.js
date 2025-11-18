@@ -1,24 +1,50 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export const dynamic = "force-dynamic"; // Ensures dynamic cookie handling
+export const dynamic = "force-dynamic";
 
 export async function POST(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    // 1. NEXT.JS 15: Await cookies
+    const cookieStore = await cookies();
+    let supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    let user = null;
 
-    // --- Step 1: Check if the user is logged in ---
+    // 2. AUTH CHECK (Hybrid: Cookies OR Bearer Token)
     const {
-      data: { session },
+      data: { session: cookieSession },
     } = await supabase.auth.getSession();
-    if (!session) {
+
+    if (cookieSession) {
+      user = cookieSession.user;
+    } else {
+      // Fallback for Postman/cURL
+      const authHeader = request.headers.get("authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        const supabaseGeneric = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        const {
+          data: { user: tokenUser },
+        } = await supabaseGeneric.auth.getUser();
+        if (tokenUser) {
+          user = tokenUser;
+          supabase = supabaseGeneric;
+        }
+      }
+    }
+
+    if (!user) {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
 
-    // --- Step 2: Get all the booking details from the request body ---
+    // --- Step 3: Get input ---
     const {
-      property_id, // This will be the number (bigint) from your properties table
+      property_id,
       check_in_date,
       check_out_date,
       num_guests,
@@ -29,28 +55,26 @@ export async function POST(request) {
       billing_postal_code,
     } = await request.json();
 
-    // --- Step 3: Insert the new booking into the 'bookings' table ---
+    // --- Step 4: Insert ---
     const { data, error } = await supabase
       .from("bookings")
       .insert({
-        user_id: session.user.id, // The ID of the person making the booking
+        user_id: user.id,
         property_id,
         check_in_date,
         check_out_date,
         num_guests,
         total_price,
-        status: "pending", // Set initial status to 'pending' (waiting for payment)
+        status: "pending",
         billing_address_line1,
         billing_city,
         billing_country,
         billing_postal_code,
       })
-      .select() // Ask Supabase to return the new row
-      .single(); // Get it as a single object, not an array
+      .select()
+      .single();
 
     if (error) {
-      // The DB will automatically check constraints (dates > 0, guests > 0)
-      // If a check fails, the error message will be sent here.
       console.error("Error creating booking:", error);
       return NextResponse.json(
         { error: "Failed to create booking.", details: error.message },
@@ -58,8 +82,6 @@ export async function POST(request) {
       );
     }
 
-    // --- Step 4: Return the newly created booking (including its ID) ---
-    // The frontend will use this ID for the next step (payment)
     return NextResponse.json(
       { message: "Booking created successfully.", booking: data },
       { status: 201 }
