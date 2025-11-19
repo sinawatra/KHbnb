@@ -5,12 +5,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic'; // Ensures dynamic cookie handling
 
 export async function POST(request, { params }) {
-<<<<<<< HEAD
   const { id: bookingId } = await params;
-=======
-  const { id: bookingId } = params; // Get the booking ID from the URL
-  const supabase = createRouteHandlerClient({ cookies });
->>>>>>> bd7b0b84d151641fb1ccdc896e7223c6c7fd4c18
 
   const cookieStore = await cookies();
   let supabase = createRouteHandlerClient({ cookies: () => cookieStore });
