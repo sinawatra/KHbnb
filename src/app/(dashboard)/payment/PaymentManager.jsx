@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react"; // Added useCallback
+import { useState, useEffect, useCallback } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -14,17 +14,16 @@ const stripePromise = loadStripe(
 );
 
 export default function PaymentManager() {
-  const [view, setView] = useState("list"); // 'list' or 'add'
-  const [savedMethods, setSavedMethods] = useState([]); // Default to empty array
+  const [view, setView] = useState("list");
+  const [savedMethods, setSavedMethods] = useState([]);
   const [clientSecret, setClientSecret] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(null);
 
-  // --- ✅ NEW FUNCTION TO FETCH METHODS ---
-  // We've moved the fetch logic into its own function
+
   const fetchMethods = useCallback(() => {
-    setIsLoading(true); // Show loading while we refetch
-    fetch("/api/stripe/list-payment-methods")
+    setIsLoading(true);
+    fetch("/api/stripe/get-payment-methods")
       .then((res) => {
         if (!res.ok) {
           throw new Error(`API Error: ${res.statusText}`);
@@ -46,19 +45,16 @@ export default function PaymentManager() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []); // Empty dependency array, this function won't change
+  }, []);
 
-  // --- ✅ MODIFIED useEffect ---
-  // Now just calls our new function on mount
   useEffect(() => {
     fetchMethods();
-  }, [fetchMethods]); //
-  // --- END OF MODIFIED SECTION ---
+  }, [fetchMethods]);
 
   const handleShowAddCard = async () => {
     setView("loading");
     try {
-      const res = await fetch("/api/stripe/create-setup-intent", {
+      const res = await fetch("/api/stripe/add-payment-methods", {
         method: "POST",
       });
       const data = await res.json();
@@ -80,12 +76,10 @@ export default function PaymentManager() {
     setView("list");
   };
 
-  // --- ✅ MODIFIED onSaveSuccess ---
-  // This now just switches the view and calls fetchMethods
   const onSaveSuccess = () => {
     setClientSecret(null);
     setView("list");
-    fetchMethods(); // <-- REFETCH THE LIST
+    fetchMethods();
   };
 
   const handleDeleteCard = async (paymentMethodId) => {
@@ -93,9 +87,9 @@ export default function PaymentManager() {
       return;
     }
 
-    setIsDeleting(paymentMethodId); // Show spinner on this card
+    setIsDeleting(paymentMethodId);
     try {
-      const res = await fetch("/api/stripe/delete-payment-method", {
+      const res = await fetch("/api/stripe/delete-payment-methods", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentMethodId }),
@@ -113,7 +107,7 @@ export default function PaymentManager() {
       console.error(error);
       alert("Error deleting card. Please try again.");
     } finally {
-      setIsDeleting(null); // Hide spinner
+      setIsDeleting(null);
     }
   };
 
@@ -214,12 +208,9 @@ function AddCardForm({ onCancel, onSuccess }) {
 
     if (error) {
       setMessage(error.message);
-      setIsProcessing(false); // Make sure to stop loading on error
+      setIsProcessing(false);
     } else if (setupIntent && setupIntent.status === "succeeded") {
-      // --- ✅ MODIFIED SUCCESS LOGIC ---
-      // DO NOT retrieve method here. Just call onSuccess.
       onSuccess();
-      // No need to set isProcessing to false, as the component will unmount
     }
   };
 
