@@ -6,7 +6,6 @@ import { createClient } from "@supabase/supabase-js"; // Needed for Postman fall
 export const dynamic = "force-dynamic";
 
 export async function POST(request, { params }) {
-  // 1. NEXT.JS 15 FIX: You must await params!
   const { id: bookingId } = await params;
 
   const cookieStore = await cookies();
