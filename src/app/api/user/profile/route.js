@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 // GET Function (Read User Profile)
 // =================================================================
 export async function GET(request) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // 1. Get the logged-in user

@@ -20,65 +20,61 @@ export function AuthProvider({ children }) {
   const supabase = createClientComponentClient();
   const router = useRouter();
 
-  const fetchUserProfile = useCallback(
-    async (userId) => {
-      if (!userId) return;
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const response = await fetch("/api/user/profile");
+      const result = await response.json();
 
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .select(
-            "user_id, full_name, email, phone_number, avatar_url, stripe_customer_id"
-          )
-          .eq("user_id", userId)
-          .single();
-
-        if (error) {
-          console.warn("Profile fetch warning:", error.message);
-          setProfile(null);
-        } else {
-          setProfile(data);
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
+      if (result.success) {
+        setProfile(result.data);
+      } else {
         setProfile(null);
       }
-    },
-    [supabase]
-  );
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      setProfile(null);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadUserFromStorage = async () => {
-      if (typeof window !== "undefined") {
-        const storedSession = localStorage.getItem("session");
-        const storedRole = localStorage.getItem("role");
+    const initAuth = async () => {
+      // Check active session from Supabase (verifies Cookie)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        if (storedSession && storedRole) {
-          try {
-            const session = JSON.parse(storedSession);
-
-            setUser({
-              session,
-              role: storedRole,
-            });
-
-            if (session?.user?.id) {
-              await fetchUserProfile(session.user.id);
-            }
-          } catch (error) {
-            console.error("Failed to parse session:", error);
-            localStorage.removeItem("session");
-            localStorage.removeItem("role");
-            setUser(null);
-            setProfile(null);
-          }
-        }
+      if (user) {
+        setUser(user);
+        await fetchUserProfile();
+      } else {
+        setUser(null);
+        setProfile(null);
       }
       setLoading(false);
     };
 
-    loadUserFromStorage();
-  }, [fetchUserProfile]);
+    initAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        if (event === "SIGNED_IN") {
+          await fetchUserProfile();
+          router.refresh();
+        }
+      } else {
+        setUser(null);
+        setProfile(null);
+        router.refresh();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase, fetchUserProfile, router]);
 
   const login = async (email, password) => {
     try {
@@ -91,20 +87,20 @@ export function AuthProvider({ children }) {
       const result = await response.json();
 
       if (result.success) {
-        localStorage.setItem("session", JSON.stringify(result.data.session));
-        localStorage.setItem("role", result.data.role);
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-        setUser(result.data);
-
-        if (result.data.session?.user?.id) {
-          await fetchUserProfile(result.data.session.user.id);
+        if (user) {
+          setUser(user);
+          await fetchUserProfile();
         }
 
         router.refresh();
         return { success: true };
       }
 
-      return { success: false, error: result.data?.details || "Login failed" };
+      return { success: false, error: result.error || "Login failed" };
     } catch (err) {
       return { success: false, error: "Network error" };
     }
@@ -121,26 +117,20 @@ export function AuthProvider({ children }) {
       const result = await response.json();
 
       if (result.success) {
-        return {
-          success: true,
-          message: result.data?.details || "Signup successful",
-        };
+        return { success: true, message: "Signup successful" };
       }
-
-      return { success: false, error: result.data?.details || "Signup failed" };
+      return { success: false, error: result.error || "Signup failed" };
     } catch (err) {
       return { success: false, error: "Network error" };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("session");
-    localStorage.removeItem("role");
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
-
-    supabase.auth.signOut();
     router.refresh();
+    router.push("/");
   };
 
   return (
