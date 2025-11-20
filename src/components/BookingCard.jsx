@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users } from "lucide-react";
+import { Calendar, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,6 +10,8 @@ import Link from "next/link";
 const FALLBACK_IMAGE = "/beachvilla.jpg";
 
 export default function BookingCard({ booking }) {
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const isValidUrl = (s) => {
     if (!s) return false; // null or undefined
     if (Array.isArray(s)) return false; // rejects []
@@ -39,16 +41,44 @@ export default function BookingCard({ booking }) {
     }
   };
 
+  const handleCancelBooking = async () => {
+    // 1. Confirm intention
+    if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+    setIsCancelling(true);
+
+    try {
+      // 2. Call the API
+      const res = await fetch(`/api/user/bookings/${booking.id}/cancel`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to cancel booking");
+      }
+
+      // 3. Success handling
+      toast.success("Booking cancelled successfully");
+
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   return (
     <div className="mt-6 bg-white p-6 rounded-lg shadow-md flex flex-col md:flex-row gap-6">
       {/* Image Container - Fixed sizing issues */}
       <div className="relative w-full md:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200">
-        <Image
+        <img
           src={imgSrc}
-          alt={booking.title}
-          fill={true}
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 200px"
+          alt={booking.title || "Property Image"}
+          className="object-cover w-full h-full"
           onError={() => setImgSrc(FALLBACK_IMAGE)}
         />
       </div>
@@ -111,12 +141,21 @@ export default function BookingCard({ booking }) {
               </Button>
             </Link>
 
-            {booking.status === "pending" && (
+            {(booking.status === "pending" ||
+              booking.status === "confirmed") && (
               <Button
                 variant="destructive"
-                onClick={() => toast.success("Booking cancelled successfully")}
+                onClick={handleCancelBooking}
+                disabled={isCancelling}
               >
-                Cancel Booking
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  "Cancel Booking"
+                )}
               </Button>
             )}
           </div>
