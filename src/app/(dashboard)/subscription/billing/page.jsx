@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Loader2, Plus } from "lucide-react";
 
 const plans = {
   annual: {
@@ -89,13 +90,26 @@ export default function BillingPage() {
 
       const data = await res.json();
 
+      if (
+        res.status === 400 &&
+        data.error?.message === "You already have an active subscription."
+      ) {
+        alert(
+          "Good news! You were already subscribed. Syncing your account..."
+        );
+        router.refresh();
+        router.push("/subscription");
+        return;
+      }
+
       if (!res.ok || data.error) {
         throw new Error(data.error?.message || "Something went wrong.");
       }
 
       // Success!
-      alert("Subscription successful!"); // You can replace this
-      router.push("/subscription"); // Redirect to their new "pro" dashboard
+      alert("Subscription successful!");
+      router.refresh();
+      router.push("/subscription");
     } catch (error) {
       setErrorMessage(error.message);
       setIsLoading(false);
@@ -106,8 +120,9 @@ export default function BillingPage() {
 
   if (isFetchingMethods) {
     return (
-      <div className="w-full max-w-2xl mx-auto py-12 text-center">
-        Loading...
+      <div className="w-full max-w-2xl mx-auto py-12 text-center flex flex-col items-center gap-2">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+        <p>Loading payment details...</p>
       </div>
     );
   }
@@ -140,7 +155,14 @@ export default function BillingPage() {
           </h1>
           <div className="space-y-6">
             {/* Annual Plan Card */}
-            <Card>
+            <Card
+              className={`cursor-pointer transition-all hover:border-red-200 ${
+                selectedPlan?.name === "Annual"
+                  ? "border-red-500 shadow-md"
+                  : ""
+              }`}
+              onClick={() => handlePlanSelect(plans.annual)}
+            >
               <CardContent className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 gap-4">
                 <div>
                   <h2 className="text-2xl font-bold">{plans.annual.name}</h2>
@@ -164,7 +186,10 @@ export default function BillingPage() {
                   </div>
                   {/* 5. This button now selects the plan and moves to step 2 */}
                   <Button
-                    onClick={() => handlePlanSelect(plans.annual)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlanSelect(plans.annual);
+                    }}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Select
@@ -174,7 +199,14 @@ export default function BillingPage() {
             </Card>
 
             {/* Monthly Plan Card */}
-            <Card>
+            <Card
+              className={`cursor-pointer transition-all hover:border-red-200 ${
+                selectedPlan?.name === "Monthly"
+                  ? "border-red-500 shadow-md"
+                  : ""
+              }`}
+              onClick={() => handlePlanSelect(plans.monthly)}
+            >
               <CardContent className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 gap-4">
                 <div>
                   <h2 className="text-2xl font-bold">{plans.monthly.name}</h2>
@@ -189,7 +221,10 @@ export default function BillingPage() {
                     </span>
                   </span>
                   <Button
-                    onClick={() => handlePlanSelect(plans.monthly)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlanSelect(plans.monthly);
+                    }}
                     className="bg-red-600 hover:bg-red-700"
                   >
                     Select
@@ -217,13 +252,18 @@ export default function BillingPage() {
                     <h3 className="text-lg font-bold">{selectedPlan.name}</h3>
                     <p className="text-gray-500">{selectedPlan.billing}</p>
                   </div>
-                  <span className="text-lg font-bold">
-                    {selectedPlan.price}
-                    <span className="text-sm font-normal text-gray-600">
-                      {" "}
-                      /month
+                  <div className="text-right">
+                    <span className="text-lg font-bold block">
+                      {selectedPlan.price}
                     </span>
-                  </span>
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 text-red-600"
+                      onClick={() => setStep(1)}
+                    >
+                      Change
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -233,43 +273,62 @@ export default function BillingPage() {
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
                 {savedMethods.length > 0 ? (
-                  <RadioGroup
-                    value={selectedMethod}
-                    onValueChange={setSelectedMethod}
-                  >
-                    <div className="space-y-2">
-                      {savedMethods.map((method) => (
-                        <div
-                          key={method.id}
-                          className="flex items-center space-x-2"
-                        >
-                          <RadioGroupItem value={method.id} id={method.id} />
-                          <Label htmlFor={method.id} className="cursor-pointer">
-                            <span className="font-medium capitalize">
-                              {method.card.brand}
-                            </span>
-                            <span> ending in {method.card.last4}</span>
-                            <span className="text-gray-500 ml-4">
-                              Expires {method.card.exp_month}/
-                              {method.card.exp_year}
-                            </span>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </RadioGroup>
+                  <>
+                    <RadioGroup
+                      value={selectedMethod}
+                      onValueChange={setSelectedMethod}
+                    >
+                      <div className="space-y-2">
+                        {savedMethods.map((method) => (
+                          <div
+                            key={method.id}
+                            className={`flex items-center space-x-2 border p-3 rounded-md transition-colors ${
+                              selectedMethod === method.id
+                                ? "border-red-500 bg-red-50"
+                                : "border-gray-200"
+                            }`}
+                            onClick={() => setSelectedMethod(method.id)}
+                          >
+                            <RadioGroupItem value={method.id} id={method.id} />
+                            <Label
+                              htmlFor={method.id}
+                              className="cursor-pointer flex-1"
+                            >
+                              <span className="font-medium capitalize">
+                                {method.card.brand}
+                              </span>
+                              <span> ending in {method.card.last4}</span>
+                              <span className="text-gray-500 ml-4 text-sm">
+                                Expires {method.card.exp_month}/
+                                {method.card.exp_year}
+                              </span>
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </RadioGroup>
+                    <Button
+                      variant="link"
+                      className="p-0 mt-4 text-red-600 flex items-center gap-1"
+                      onClick={() => router.push("/payment")}
+                    >
+                      <Plus className="h-4 w-4" /> Add another card
+                    </Button>
+                  </>
                 ) : (
-                  <p className="text-gray-500">
-                    You have no saved payment methods.
-                  </p>
+                  <div className="text-center py-4">
+                    <p className="text-gray-500 mb-4">
+                      You have no saved payment methods.
+                    </p>
+                    <Button
+                      onClick={() => router.push("/payment")}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Add Payment Method
+                    </Button>
+                  </div>
                 )}
-                <Button
-                  variant="link"
-                  className="p-0 mt-2 text-red-600"
-                  onClick={() => router.push("/payment")} // Link to your add card page
-                >
-                  Manage payment methods
-                </Button>
               </CardContent>
             </Card>
 
@@ -281,9 +340,12 @@ export default function BillingPage() {
               <Button
                 onClick={handleSubscribe}
                 disabled={isLoading || !selectedMethod}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-red-600 hover:bg-red-700 min-w-[150px]"
               >
-                {isLoading ? "Processing..." : "Confirm and Subscribe"}
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {isLoading ? "Processing..." : "Confirm & Subscribe"}
               </Button>
             </div>
             {errorMessage && (
