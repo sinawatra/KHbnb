@@ -1,12 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar, Users } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
+const FALLBACK_IMAGE = "/beachvilla.jpg";
+
 export default function BookingCard({ booking }) {
+  const isValidUrl = (s) => {
+    if (!s) return false; // null or undefined
+    if (Array.isArray(s)) return false; // rejects []
+    if (typeof s !== "string") return false; // rejects objects/numbers
+    if (s.trim() === "" || s === "#") return false; // rejects empty strings
+    return true;
+  };
+
+  const [imgSrc, setImgSrc] = useState(() => {
+    return isValidUrl(booking.image) ? booking.image : FALLBACK_IMAGE;
+  });
+
+  useEffect(() => {
+    setImgSrc(isValidUrl(booking.image) ? booking.image : FALLBACK_IMAGE);
+  }, [booking.image]);
+
   const getStatusStyles = (status) => {
     switch (status) {
       case "completed":
@@ -25,11 +44,12 @@ export default function BookingCard({ booking }) {
       {/* Image Container - Fixed sizing issues */}
       <div className="relative w-full md:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200">
         <Image
-          src={booking.image}
+          src={imgSrc}
           alt={booking.title}
           fill={true}
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 200px"
+          onError={() => setImgSrc(FALLBACK_IMAGE)}
         />
       </div>
 

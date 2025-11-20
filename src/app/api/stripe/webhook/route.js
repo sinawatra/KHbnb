@@ -112,6 +112,41 @@ export async function POST(req) {
       case "invoice.paid": {
         const invoice = event.data.object;
 
+        // 1. Fetch the User (we need user_id for the payments table)
+        const { data: user } = await supabaseAdmin
+          .from("users")
+          .select("id")
+          .eq("stripe_customer_id", invoice.customer)
+          .single();
+
+        if (user) {
+          // 2. Fetch the internal Subscription ID (needed if payments.subscription_id is a foreign key)
+          // Note: This might return null on the very first invoice if the subscription
+          // insert happens milliseconds after this event.
+          const { data: sub } = await supabaseAdmin
+            .from("user_subscriptions")
+            .select("id")
+            .eq("stripe_subscription_id", invoice.subscription)
+            .single();
+
+          // 3. INSERT into the 'payments' table
+          const { error: paymentError } = await supabaseAdmin
+            .from("payments")
+            .insert({
+              stripe_charge_id: invoice.charge,
+              user_id: user.id,
+              subscription_id: sub ? sub.id : null, // Use internal ID if found
+              amount: invoice.amount_paid / 100, // Stripe is in cents, your DB is likely standard units
+              status: "succeeded",
+              booking_id: null, // Null because this is a subscription, not a one-off booking
+            });
+
+          if (paymentError)
+            console.error("Error logging payment:", paymentError);
+          else console.log(`💰 Payment logged for user ${user.id}`);
+        }
+
+        // 4. Handle Subscription Renewal Logic (Existing logic)
         if (
           invoice.subscription &&
           invoice.billing_reason === "subscription_cycle"
@@ -120,7 +155,6 @@ export async function POST(req) {
             invoice.subscription
           );
 
-          // Update end_date for renewal
           await supabaseAdmin
             .from("user_subscriptions")
             .update({
@@ -132,9 +166,42 @@ export async function POST(req) {
             .eq("stripe_subscription_id", invoice.subscription);
 
           console.log(`✅ Subscription renewed: ${invoice.subscription}`);
+        }
+        break;
+      }
 
-          // TODO: Send renewal notification email here
-          // Get user email and send via your email service
+      // One time payments
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object;
+
+        // 1. Extract the data you saved in Step 1
+        const userId = paymentIntent.metadata.user_id;
+        const bookingId = paymentIntent.metadata.booking_id;
+
+        // 2. Insert into Payments Table
+        const { error } = await supabaseAdmin.from("payments").insert({
+          stripe_charge_id: paymentIntent.latest_charge,
+          user_id: userId,
+          booking_id: bookingId ? parseInt(bookingId) : null,
+          subscription_id: null,
+          amount: paymentIntent.amount / 100,
+          status: "succeeded",
+          // created_at is usually auto-handled by DB, but can be added if needed
+        });
+
+        if (bookingId) {
+          await supabaseAdmin
+            .from("bookings")
+            .update({ status: "confirmed" })
+            .eq("id", bookingId);
+
+          console.log(`✅ Booking ${bookingId} confirmed!`);
+        }
+
+        if (error) {
+          console.error("❌ Error logging one-time payment:", error);
+        } else {
+          console.log(`💰 One-time payment logged for Booking ${bookingId}`);
         }
         break;
       }
