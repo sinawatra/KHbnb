@@ -21,7 +21,7 @@ export async function GET(request) {
       *,
       provinces ( name )
     `)
-    .eq('status', 'active');
+    .eq('status', 'Active');
 
   // Add filters if they exist
   if (provinceName) {

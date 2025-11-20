@@ -19,7 +19,7 @@ export async function GET(request) {
           provinces!inner( name )
         `)
         .eq('provinces.name', provinceName)
-        .eq('status', 'active')
+        .eq('status', 'Active')
         .eq('is_featured', 'TRUE')
         // RLS (is_featured=true) is still applied!
         .limit(4); // Get the top 4 for the landing page

@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
     `
     )
     .eq("properties_id", propertyId)
-    .eq("status", "active")
+    .eq("status", "Active")
     .single(); // We only expect one result
 
   if (error || !property) {
