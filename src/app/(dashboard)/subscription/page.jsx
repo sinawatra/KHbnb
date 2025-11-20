@@ -83,7 +83,7 @@ export default async function SubscriptionPage() {
               without commitment
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-6 flex-1 p-6 pt-0">
+          <CardContent className="flex flex-col gap-6 flex-1 p-6">
             <div className="flex flex-col gap-3 min-h-[3rem]">
               {" "}
               {!isPro ? (

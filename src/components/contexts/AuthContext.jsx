@@ -111,7 +111,12 @@ export function AuthProvider({ children }) {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, fullName, phoneNumber }),
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          phone_number: phoneNumber,
+        }),
       });
 
       const result = await response.json();
