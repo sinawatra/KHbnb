@@ -28,16 +28,24 @@ export default async function SubscriptionPage() {
   const supabase = createServerComponentClient({ cookies: () => cookieStore });
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: { message: "Unauthorized" } },
+      { status: 401 }
+    );
+  }
 
   let isPro = false;
 
-  if (session) {
+  if (user) {
     const { data: subscription } = await supabase
       .from("user_subscriptions")
       .select("status")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("status", "active")
       .single();
 
