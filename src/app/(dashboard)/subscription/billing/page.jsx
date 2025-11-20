@@ -35,7 +35,7 @@ export default function BillingPage() {
   // State for payment methods
   const [savedMethods, setSavedMethods] = useState([]);
   const [isFetchingMethods, setIsFetchingMethods] = useState(true);
-  const [selectedMethod, setSelectedMethod] = useState(""); // Holds the 'pm_...' ID
+  const [selectedMethod, setSelectedMethod] = useState("");
 
   // State for the final API call
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function BillingPage() {
 
   // 2. Fetch the user's saved payment methods on load
   useEffect(() => {
-    fetch("/api/stripe/list-payment-methods")
+    fetch("/api/stripe/get-payment-methods")
       .then((res) => res.json())
       .then((data) => {
         if (data.paymentMethods) {

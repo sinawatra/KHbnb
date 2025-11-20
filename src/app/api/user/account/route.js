@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic'; // Ensures dynamic cookie handling
 
 export async function GET(request) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const cookieStore = await cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // 1. Check if a user is logged in by getting their session.
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();

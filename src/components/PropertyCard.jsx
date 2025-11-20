@@ -5,6 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+const PROVINCE_MAP = {
+  1: "Phnom Penh",
+  2: "Siem Reap",
+  3: "Sihanoukville",
+  4: "Kampot",
+  5: "Kep",
+};
+
 export default function PropertyCard({ property }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -15,6 +23,11 @@ export default function PropertyCard({ property }) {
     : [];
 
   const safeImages = images.length ? images : ["/beachvilla.jpg"];
+
+  const locationName = 
+    property.provinces?.name || 
+    PROVINCE_MAP[property.province_id] || 
+    "Cambodia";
 
   const goToPrevious = (e) => {
     e.stopPropagation();
@@ -35,7 +48,7 @@ export default function PropertyCard({ property }) {
   };
 
   return (
-    <Link href={`/properties/${property.id}`} className="group block">
+    <Link href={`/properties/${property.properties_id}`} className="group block">
       <div className="relative overflow-hidden rounded-xl aspect-square">
         <Image
           src={safeImages[currentIndex]}
@@ -74,8 +87,9 @@ export default function PropertyCard({ property }) {
         <h3 className="font-semibold text-gray-900 truncate">
           {property.title}
         </h3>
-        <p className="text-sm text-gray-600">{property.distance}</p>
-        <p className="text-sm text-gray-600">{property.dates}</p>
+        
+        <p className="text-sm text-gray-600">{locationName}</p>
+        
         <div className="mt-1">
           <span className="font-bold">${property.price_per_night}</span>
           <span className="text-sm text-gray-600">/ night</span>

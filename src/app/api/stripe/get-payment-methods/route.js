@@ -6,7 +6,8 @@ import { cookies } from "next/headers";
 export async function GET() {
   try {
     // 1. Create a server-side Supabase client
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // 2. Get the user's session from the cookies
     const {

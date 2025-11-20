@@ -1,5 +1,5 @@
 "use client";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/contexts/AuthContext";
 import Image from "next/image";
@@ -13,44 +13,52 @@ import {
 import {
   Star,
   MapPin,
+  DoorOpen,
+  WavesLadder,
   Flower2,
   Mountain,
-  Utensils,
   CircleParking,
-  WavesLadder,
-  DoorOpen,
+  Utensils,
 } from "lucide-react";
 import Footer from "@/components/Footer";
+
+const PROVINCE_MAP = {
+  1: "Phnom Penh",
+  2: "Siem Reap",
+  3: "Sihanoukville",
+  4: "Kampot",
+  5: "Kep",
+};
 
 export default function PropertyDetailsPage({ params }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { profile, loading } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
+
+  // State for the property data
+  const [property, setProperty] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Booking State
   const [date, setDate] = useState({ from: undefined, to: undefined });
   const [guests, setGuests] = useState(1);
 
-  const property = {
-    id: resolvedParams.id,
-    title: "Luxury Kep Villa",
-    location: "Kep, Cambodia",
-    images: [
-      "/beachvilla.jpg",
-      "/hotel.jpg",
-      "/resort.jpg",
-      "/beachvilla.jpg",
-      "/hotel.jpg",
-    ],
-    host: "Deva",
-    guests: 2,
-    bedrooms: 1,
-    beds: 1,
-    bathrooms: 1,
-    pricePerNight: 400,
-    rating: 4.9,
-    reviews: 128,
-    cleaningFee: 200,
-    serviceFee: 300,
-  };
+  // --- 1. FETCH REAL DATA ON MOUNT ---
+  useEffect(() => {
+    if (!resolvedParams.id) return;
+
+    fetch(`/api/properties/${resolvedParams.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setProperty(data.data);
+        } else {
+          console.error("Property not found");
+        }
+      })
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
+  }, [resolvedParams.id]);
 
   const calculateNights = () => {
     if (!date?.from || !date?.to) return 0;
@@ -58,9 +66,24 @@ export default function PropertyDetailsPage({ params }) {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  if (!property)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Property not found.
+      </div>
+    );
+
   const nights = calculateNights();
-  const subtotal = nights * property.pricePerNight;
-  const total = subtotal + property.cleaningFee + property.serviceFee;
+  const subtotal = nights * property.price_per_night; // Matches DB column
+  const cleaningFee = 20; // Example fixed fee
+  const serviceFee = 30; // Example fixed fee
+  const total = subtotal + cleaningFee + serviceFee;
 
   const formatDate = (dateObj) => {
     if (!dateObj) return "Add date";
@@ -72,41 +95,38 @@ export default function PropertyDetailsPage({ params }) {
   };
 
   const handleBookClick = () => {
-    // if (!profile) {
-    //   router.push("/register");
-    //   return;
-    // }
-
-    // Validate dates are selected
     if (!date?.from || !date?.to) {
       alert("Please select check-in and check-out dates");
       return;
     }
 
-    // Store booking data in sessionStorage
+    // --- 2. SAVE CORRECT DATA STRUCTURE ---
     const bookingData = {
-      propertyId: property.id,
+      propertyId: property.properties_id,
+
       property: {
+        properties_id: property.properties_id,
         title: property.title,
-        location: property.location,
-        image: property.images[0],
-        host: property.host,
-        pricePerNight: property.pricePerNight,
+        location: property.provinces?.name || "Cambodia",
+        image: property.image_urls?.[0] || "/placeholder.jpg",
+        host: property.host_name || "Host",
+        pricePerNight: property.price_per_night,
       },
       checkIn: date.from.toISOString(),
       checkOut: date.to.toISOString(),
       nights,
       guests,
       subtotal,
-      cleaningFee: property.cleaningFee,
-      serviceFee: property.serviceFee,
+      cleaningFee,
+      serviceFee,
       total,
     };
 
     sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
-
     router.push("/checkout?step=confirm-and-pay");
   };
+
+  const mainImage = property.image_urls?.[0] || "/beachvilla.jpg";
 
   return (
     <div className="min-h-screen bg-white">
@@ -118,142 +138,60 @@ export default function PropertyDetailsPage({ params }) {
           <h1 className="text-3xl font-semibold mb-2">{property.title}</h1>
           <div className="flex items-center gap-2 text-sm">
             <MapPin size={16} />
-            <span className="underline">{property.location}</span>
+            <span className="text-gray-600">
+              {PROVINCE_MAP[property.province_id] || "Unknown Location"}
+            </span>
           </div>
         </div>
-        <div className="grid grid-cols-4 grid-rows-2 gap-2 h-[500px] rounded-xl overflow-hidden mb-8">
-          <div className="col-span-2 row-span-2 relative">
-            <Image
-              src={property.images[0]}
-              alt="Main"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative">
-            <Image
-              src={property.images[1]}
-              alt="Image 2"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative">
-            <Image
-              src={property.images[2]}
-              alt="Image 3"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative">
-            <Image
-              src={property.images[3]}
-              alt="Image 4"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div className="relative">
-            <Image
-              src={property.images[4]}
-              alt="Image 5"
-              fill
-              className="object-cover"
-            />
-          </div>
+
+        {/* Image Grid - Using fallback if array is missing */}
+        <div className="h-[500px] rounded-xl overflow-hidden mb-8 relative">
+          <Image
+            src={property.image_url || "/beachvilla.jpg"}
+            alt={property.title}
+            fill
+            className="object-cover"
+          />
         </div>
+
         <div className="grid grid-cols-3 gap-12">
           <div className="col-span-2">
             <div className="border-b pb-6 mb-6">
               <h2 className="text-2xl font-semibold mb-2">
-                Resort hosted by {property.host}
+                Hosted by {property.host_name || "Host"}
               </h2>
               <p className="text-gray-600">
-                {property.guests} guests · {property.bedrooms} bedroom ·{" "}
-                {property.beds} bed · {property.bathrooms} private bathroom
+                {property.max_guests} guests · {property.num_bedrooms} bedrooms
               </p>
-            </div>
-            <div className="space-y-6 border-b pb-6 mb-6">
-              <div className="flex gap-4">
-                <DoorOpen />
-                <div>
-                  <h3 className="font-semibold">Self check-in</h3>
-                  <p className="text-gray-600 text-sm">
-                    You can check in with the building staff.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <Star />
-                <div>
-                  <h3 className="font-semibold">
-                    {property.host} is a Superhost
-                  </h3>
-                  <p className="text-gray-600 text-sm">
-                    Superhosts are experienced, highly rated hosts.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <WavesLadder />
-                <div>
-                  <h3 className="font-semibold">Dive right in</h3>
-                  <p className="text-gray-600 text-sm">
-                    This is one of the few places in the area with a pool.
-                  </p>
-                </div>
-              </div>
             </div>
             <div className="border-b pb-6 mb-6">
               <h3 className="font-bold">Description</h3>
               <p className="text-gray-700 leading-relaxed">
-                Showing off with one of the world&apos;s most remarkable beaches,
-                Island Resort welcomes you to experience an original beach
-                filled holidays.
+                {property.description}
               </p>
             </div>
-            <div>
-              <h3 className="text-xl font-semibold mb-4">
-                What this place offers
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <Flower2 />
-                  <span>Garden view</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mountain />
-                  <span>Valley view</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CircleParking />
-                  <span>Free parking on premises</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Utensils />
-                  <span>Breakfast</span>
-                </div>
-              </div>
-            </div>
           </div>
+
+          {/* Booking Widget */}
           <div className="col-span-1">
             <div className="border rounded-xl p-6 shadow-lg sticky top-6">
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-2xl font-semibold">
-                  ${property.pricePerNight}
+                  ${property.price_per_night}
                 </span>
                 <span className="text-gray-600">per night</span>
               </div>
+
+              {/* Date Picker & Guests (Same as your code) */}
               <Popover>
                 <PopoverTrigger asChild>
                   <div className="border rounded-lg mb-4 cursor-pointer">
                     <div className="grid grid-cols-2 border-b">
-                      <div className="p-3 border-r hover:bg-gray-50">
+                      <div className="p-3 border-r">
                         <div className="text-xs font-semibold">CHECK-IN</div>
                         <div className="text-sm">{formatDate(date?.from)}</div>
                       </div>
-                      <div className="p-3 hover:bg-gray-50">
+                      <div className="p-3">
                         <div className="text-xs font-semibold">CHECK-OUT</div>
                         <div className="text-sm">{formatDate(date?.to)}</div>
                       </div>
@@ -264,11 +202,10 @@ export default function PropertyDetailsPage({ params }) {
                         value={guests}
                         onChange={(e) => setGuests(Number(e.target.value))}
                         className="text-sm w-full outline-none bg-transparent"
-                        onClick={(e) => e.stopPropagation()}
                       >
-                        {[1, 2, 3, 4, 5, 6].map((num) => (
-                          <option key={num} value={num}>
-                            {num} guest{num > 1 ? "s" : ""}
+                        {[...Array(property.max_guests || 6)].map((_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {i + 1} guest{i > 0 ? "s" : ""}
                           </option>
                         ))}
                       </select>
@@ -286,6 +223,7 @@ export default function PropertyDetailsPage({ params }) {
                   />
                 </PopoverContent>
               </Popover>
+
               <button
                 onClick={handleBookClick}
                 disabled={loading}
@@ -293,33 +231,24 @@ export default function PropertyDetailsPage({ params }) {
               >
                 Book
               </button>
-              <p className="text-center text-sm text-gray-600 mb-4">
-                You won&apos;t be charged yet
-              </p>
+
               {nights > 0 && (
-                <>
-                  <div className="space-y-2 text-sm border-t pt-4">
-                    <div className="flex justify-between">
-                      <span className="underline">
-                        ${property.pricePerNight} x {nights} night
-                        {nights > 1 ? "s" : ""}
-                      </span>
-                      <span>${subtotal}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="underline">Cleaning fee</span>
-                      <span>${property.cleaningFee}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="underline">Service fee</span>
-                      <span>${property.serviceFee}</span>
-                    </div>
+                <div className="space-y-2 text-sm border-t pt-4">
+                  <div className="flex justify-between">
+                    <span>
+                      ${property.price_per_night} x {nights} nights
+                    </span>
+                    <span>${subtotal}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cleaning fee</span>
+                    <span>${cleaningFee}</span>
                   </div>
                   <div className="flex justify-between font-semibold pt-4 border-t mt-4">
-                    <span>Total before taxes</span>
+                    <span>Total</span>
                     <span>${total}</span>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>

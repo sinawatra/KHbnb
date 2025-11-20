@@ -1,71 +1,81 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import BookingCard from "@/components/BookingCard";
 
-const bookings = [
-  {
-    id: "B001",
-    title: "Angkor Temple View Villa",
-    status: 'pending',
-    image: "#",
-    checkIn: "Oct 15, 2025",
-    checkOut: "Oct 17, 2025",
-    guests: 4,
-    price: 195,
-  },
-  {
-    id: "B002",
-    title: "Riverside Boutique Hotel",
-    status: 'completed',
-    image: "#",
-    checkIn: "Nov 5, 2025",
-    checkOut: "Nov 8, 2025",
-    guests: 2,
-    price: 320,
-  },
-  {
-    id: "B003",
-    title: "Royal Palace Garden Suite",
-    status: 'cancelled',
-    image: "#",
-    checkIn: "Dec 20, 2025",
-    checkOut: "Dec 25, 2025",
-    guests: 6,
-    price: 875,
-  },
-  {
-    id: "B004",
-    title: "Central Market Loft",
-    status: 'cancelled',
-    image: "#",
-    checkIn: "Jan 10, 2026",
-    checkOut: "Jan 12, 2026",
-    guests: 3,
-    price: 240,
-  },
-  {
-    id: "B005",
-    title: "Tonle Sap Lake House",
-    status: 'completed',
-    image: "#",
-    checkIn: "Feb 14, 2026",
-    checkOut: "Feb 18, 2026",
-    guests: 5,
-    price: 480,
-  },
-];
+export default function BookingHistory() {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-export default function Home() {
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await fetch("/api/user/bookings/bookings_history");
+
+        if (!res.ok) {
+          if (res.status === 401) throw new Error("Please log in.");
+          throw new Error("Failed to fetch bookings");
+        }
+
+        const json = await res.json();
+
+        const mappedBookings = json.booking.map((b) => {
+          const propertyImages = b.properties?.image_urls;
+          const mainImage =
+            Array.isArray(propertyImages) && propertyImages.length > 0
+              ? propertyImages[0]
+              : "#"; // Fallback if empty
+
+          return {
+            id: b.id,
+            propertyId: b.property_id,
+            status: b.status,
+            title: b.properties?.title || "Unknown Property",
+            image: mainImage,
+            checkIn: b.check_in_date
+              ? new Date(b.check_in_date).toLocaleDateString()
+              : "TBD",
+            checkOut: b.check_out_date
+              ? new Date(b.check_out_date).toLocaleDateString()
+              : "TBD",
+            price: b.total_price || 0,
+            guests: b.num_guests || 1,
+          };
+        });
+
+        setBookings(mappedBookings);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, []);
+
+  if (loading) return <div className="pl-4 pt-10">Loading history...</div>;
+  if (error)
+    return <div className="pl-4 pt-10 text-red-500">Error: {error}</div>;
+
   return (
     <div className="pl-4">
       <h1 className="font-bold text-2xl">Booking History</h1>
-      <p className="text-gray-400 font-semibold">
+      <p className="text-gray-400 font-semibold mb-6">
         View and manage your reservations
       </p>
 
-      <div className="space-y-4">
-        {bookings.map((booking) => (
-          <BookingCard key={booking.id} booking={booking} />
-        ))}
-      </div>
+      {bookings.length === 0 ? (
+        <div className="text-gray-500 mt-10">You have no bookings yet.</div>
+      ) : (
+        <div className="space-y-4">
+          {bookings.map((booking) => (
+            <BookingCard key={booking.id} booking={booking} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
