@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // --- Step 1: Check if the user is logged in ---
