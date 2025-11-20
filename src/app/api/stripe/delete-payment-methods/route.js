@@ -11,7 +11,8 @@ export async function POST(request) {
     }
 
     // --- 1. Authenticate the user (same as your other routes) ---
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     const {
       data: { session },
     } = await supabase.auth.getSession();

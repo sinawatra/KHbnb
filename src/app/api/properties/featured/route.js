@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 const provinces = ['Phnom Penh', 'Siem Reap', 'Sihanoukville', 'Kampot', 'Kep'];
 
 export async function GET(request) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
   
   try {

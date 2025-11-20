@@ -107,7 +107,7 @@ export default function PropertyDetailsPage({ params }) {
       property: {
         properties_id: property.properties_id,
         title: property.title,
-        location: property.province_id || "Cambodia",
+        location: property.provinces?.name || "Cambodia",
         image: property.image_urls?.[0] || "/placeholder.jpg",
         host: property.host_name || "Host",
         pricePerNight: property.price_per_night,
