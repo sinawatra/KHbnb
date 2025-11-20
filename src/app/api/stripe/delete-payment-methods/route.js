@@ -13,11 +13,13 @@ export async function POST(request) {
     // --- 1. Authenticate the user (same as your other routes) ---
     const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
 
-    if (!session) {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
         { error: { message: "Unauthorized" } },
         { status: 401 }
@@ -28,7 +30,7 @@ export async function POST(request) {
     const { data: profile } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (!profile || !profile.stripe_customer_id) {

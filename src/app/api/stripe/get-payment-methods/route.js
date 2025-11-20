@@ -11,10 +11,11 @@ export async function GET() {
 
     // 2. Get the user's session from the cookies
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: { message: "Unauthorized" } },
         { status: 401 }
@@ -24,11 +25,11 @@ export async function GET() {
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id) // Use the authenticated user's ID
+      .eq("user_id", user.id)
       .single();
 
     if (error || !profile || !profile.stripe_customer_id) {
-      console.error("Stripe customer ID not found for user:", session.user.id);
+      console.error("Stripe customer ID not found for user:", user.id);
       throw new Error("Stripe customer ID not found.");
     }
 
