@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe"; // Your server-side Stripe instance
+import { stripe } from "@/lib/stripe";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export async function POST(request) {
@@ -24,6 +25,17 @@ export async function POST(request) {
         { status: 401 }
       );
     }
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
     // --- 2. Get user's Stripe Customer ID ---
     const { data: profile, error } = await supabase
@@ -52,35 +64,81 @@ export async function POST(request) {
     // B. If Stripe says they are subscribed...
     if (stripeSubscriptions.data.length > 0) {
       const activeSub = stripeSubscriptions.data[0];
-      
+
       // C. Check if Supabase knows about this
-      const { data: localSub } = await supabase
+      const { data: localSub } = await supabaseAdmin
         .from("user_subscriptions")
         .select("user_subscriptions_id, status")
         .eq("stripe_subscription_id", activeSub.id)
         .single();
 
       // D. "Self-Healing": If Supabase is missing data, fix it now.
-      if (!localSub || localSub.status !== 'active') {
+      if (!localSub || localSub.status !== "active") {
         console.log("Desync detected. Syncing Supabase with Stripe...");
-        
+        console.log(
+          "Stripe Subscription Object:",
+          JSON.stringify(activeSub, null, 2)
+        );
+
         const currentPriceId = activeSub.items.data[0].price.id;
-        
-        const { data: plan } = await supabase
+
+        const getSafeDate = (obj) => {
+          if (obj.current_period_start)
+            return new Date(obj.current_period_start * 1000).toISOString();
+          if (obj.current_period_end)
+            return new Date(obj.current_period_end * 1000).toISOString();
+
+          const item = obj.items?.data[0];
+          if (item?.current_period_start)
+            return new Date(item.current_period_start * 1000).toISOString();
+
+          // Fallback
+          return new Date().toISOString();
+        };
+
+        const startDate = activeSub.current_period_start
+          ? new Date(activeSub.current_period_start * 1000).toISOString()
+          : new Date(
+              activeSub.items.data[0].current_period_start * 1000
+            ).toISOString();
+
+        const endDate = activeSub.current_period_end
+          ? new Date(activeSub.current_period_end * 1000).toISOString()
+          : new Date(
+              activeSub.items.data[0].current_period_end * 1000
+            ).toISOString();
+
+        const { data: plan } = await supabaseAdmin
           .from("subscription_plans")
-          .select("subscription_plans_id") 
+          .select("subscription_plans_id")
           .eq("stripe_price_id", currentPriceId)
           .single();
 
         if (plan) {
-           await supabase.from("user_subscriptions").upsert({
-            user_id: session.user.id,
-            subscription_plans_id: plan.subscription_plans_id,
-            stripe_subscription_id: activeSub.id,
-            start_date: new Date(activeSub.current_period_start * 1000).toISOString(),
-            end_date: new Date(activeSub.current_period_end * 1000).toISOString(),
-            status: "active",
-          }, { onConflict: 'stripe_subscription_id' });
+          const { error: upsertError } = await supabaseAdmin
+            .from("user_subscriptions")
+            .upsert(
+              {
+                user_id: session.user.id,
+                subscription_plans_id: plan.subscription_plans_id,
+                stripe_subscription_id: activeSub.id,
+                start_date: startDate,
+                end_date: endDate,
+                status: "active",
+              },
+              { onConflict: "stripe_subscription_id" }
+            );
+
+          if (upsertError) {
+            console.error("Supabase Upsert Error:", upsertError);
+          } else {
+            console.log("Supabase synced successfully.");
+          }
+        } else {
+          console.error(
+            "Could not sync: Plan not found in DB for price",
+            currentPriceId
+          );
         }
       }
 
