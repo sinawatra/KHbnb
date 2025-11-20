@@ -8,15 +8,9 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export async function POST(req) {
   const body = await req.text();
-  const sig = headers().get("stripe-signature");
+  const sig = (await headers()).get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!sig || !webhookSecret) {
@@ -103,7 +97,7 @@ export async function POST(req) {
         if (error) {
           console.error("Supabase error:", error);
         } else {
-          console.log(`✅ Subscription activated for user ${user.id}`);
+          console.log(`Subscription activated for user ${user.id}`);
         }
         break;
       }
@@ -135,15 +129,15 @@ export async function POST(req) {
             .insert({
               stripe_charge_id: invoice.charge,
               user_id: user.id,
-              subscription_id: sub ? sub.id : null, // Use internal ID if found
-              amount: invoice.amount_paid / 100, // Stripe is in cents, your DB is likely standard units
+              subscription_id: sub ? sub.id : null,
+              amount: invoice.amount_paid / 100,
               status: "succeeded",
-              booking_id: null, // Null because this is a subscription, not a one-off booking
+              booking_id: null,
             });
 
           if (paymentError)
             console.error("Error logging payment:", paymentError);
-          else console.log(`💰 Payment logged for user ${user.id}`);
+          else console.log(`Payment logged for user ${user.id}`);
         }
 
         // 4. Handle Subscription Renewal Logic (Existing logic)
@@ -165,7 +159,7 @@ export async function POST(req) {
             })
             .eq("stripe_subscription_id", invoice.subscription);
 
-          console.log(`✅ Subscription renewed: ${invoice.subscription}`);
+          console.log(`Subscription renewed: ${invoice.subscription}`);
         }
         break;
       }
@@ -182,11 +176,10 @@ export async function POST(req) {
         const { error } = await supabaseAdmin.from("payments").insert({
           stripe_charge_id: paymentIntent.latest_charge,
           user_id: userId,
-          booking_id: bookingId ? parseInt(bookingId) : null,
+          booking_id: bookingId ? bookingId : null,
           subscription_id: null,
           amount: paymentIntent.amount / 100,
           status: "succeeded",
-          // created_at is usually auto-handled by DB, but can be added if needed
         });
 
         if (bookingId) {
@@ -195,13 +188,13 @@ export async function POST(req) {
             .update({ status: "confirmed" })
             .eq("id", bookingId);
 
-          console.log(`✅ Booking ${bookingId} confirmed!`);
+          console.log(`Booking ${bookingId} confirmed!`);
         }
 
         if (error) {
-          console.error("❌ Error logging one-time payment:", error);
+          console.error("Error logging one-time payment:", error);
         } else {
-          console.log(`💰 One-time payment logged for Booking ${bookingId}`);
+          console.log(`One-time payment logged for Booking ${bookingId}`);
         }
         break;
       }
@@ -216,9 +209,8 @@ export async function POST(req) {
             .update({ status: "inactive" })
             .eq("stripe_subscription_id", invoice.subscription);
 
-          console.log(`❌ Payment failed for: ${invoice.subscription}`);
+          console.log(`Payment failed for: ${invoice.subscription}`);
 
-          // TODO: Send payment failed notification
         }
         break;
       }
@@ -231,11 +223,11 @@ export async function POST(req) {
           .from("user_subscriptions")
           .update({
             status: "inactive",
-            end_date: new Date().toISOString(), // Mark as ended now
+            end_date: new Date().toISOString(),
           })
           .eq("stripe_subscription_id", subscription.id);
 
-        console.log(`🚫 Subscription canceled: ${subscription.id}`);
+        console.log(`Subscription canceled: ${subscription.id}`);
         break;
       }
 
