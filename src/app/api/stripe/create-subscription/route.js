@@ -168,6 +168,11 @@ export async function POST(request) {
       customer: customerId,
       items: [{ price: priceId }],
       expand: ["latest_invoice.payment_intent"],
+      metadata: {
+        user_id: session.user.id,
+      },
+      payment_behavior: "default_incomplete",
+      payment_settings: { save_default_payment_method: "on_subscription" },
     });
 
     // --- 6. Send success response ---
