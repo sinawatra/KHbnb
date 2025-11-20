@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe"; // Your server-side Stripe instance
+import { stripe } from "@/lib/stripe";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export async function POST(request) {
   try {
-    // priceId: The ID of the plan (e.g., "price_123...")
-    // paymentMethodId: The ID of the card they want to use
     const { priceId, paymentMethodId } = await request.json();
 
     if (!priceId || !paymentMethodId) {
@@ -14,7 +13,8 @@ export async function POST(request) {
     }
 
     // --- 1. Authenticate user ---
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -26,11 +26,22 @@ export async function POST(request) {
       );
     }
 
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
     // --- 2. Get user's Stripe Customer ID ---
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("id", session.user.id)
+      .eq("user_id", session.user.id)
       .single();
 
     if (error || !profile || !profile.stripe_customer_id) {
@@ -42,6 +53,101 @@ export async function POST(request) {
       throw new Error("Stripe customer ID not found.");
     }
     const customerId = profile.stripe_customer_id;
+
+    // A. Check Stripe directly for active subscriptions
+    const stripeSubscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "active",
+      limit: 1,
+    });
+
+    // B. If Stripe says they are subscribed...
+    if (stripeSubscriptions.data.length > 0) {
+      const activeSub = stripeSubscriptions.data[0];
+
+      // C. Check if Supabase knows about this
+      const { data: localSub } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("user_subscriptions_id, status")
+        .eq("stripe_subscription_id", activeSub.id)
+        .single();
+
+      // D. "Self-Healing": If Supabase is missing data, fix it now.
+      if (!localSub || localSub.status !== "active") {
+        console.log("Desync detected. Syncing Supabase with Stripe...");
+        console.log(
+          "Stripe Subscription Object:",
+          JSON.stringify(activeSub, null, 2)
+        );
+
+        const currentPriceId = activeSub.items.data[0].price.id;
+
+        const getSafeDate = (obj) => {
+          if (obj.current_period_start)
+            return new Date(obj.current_period_start * 1000).toISOString();
+          if (obj.current_period_end)
+            return new Date(obj.current_period_end * 1000).toISOString();
+
+          const item = obj.items?.data[0];
+          if (item?.current_period_start)
+            return new Date(item.current_period_start * 1000).toISOString();
+
+          // Fallback
+          return new Date().toISOString();
+        };
+
+        const startDate = activeSub.current_period_start
+          ? new Date(activeSub.current_period_start * 1000).toISOString()
+          : new Date(
+              activeSub.items.data[0].current_period_start * 1000
+            ).toISOString();
+
+        const endDate = activeSub.current_period_end
+          ? new Date(activeSub.current_period_end * 1000).toISOString()
+          : new Date(
+              activeSub.items.data[0].current_period_end * 1000
+            ).toISOString();
+
+        const { data: plan } = await supabaseAdmin
+          .from("subscription_plans")
+          .select("subscription_plans_id")
+          .eq("stripe_price_id", currentPriceId)
+          .single();
+
+        if (plan) {
+          const { error: upsertError } = await supabaseAdmin
+            .from("user_subscriptions")
+            .upsert(
+              {
+                user_id: session.user.id,
+                subscription_plans_id: plan.subscription_plans_id,
+                stripe_subscription_id: activeSub.id,
+                start_date: startDate,
+                end_date: endDate,
+                status: "active",
+              },
+              { onConflict: "stripe_subscription_id" }
+            );
+
+          if (upsertError) {
+            console.error("Supabase Upsert Error:", upsertError);
+          } else {
+            console.log("Supabase synced successfully.");
+          }
+        } else {
+          console.error(
+            "Could not sync: Plan not found in DB for price",
+            currentPriceId
+          );
+        }
+      }
+
+      // E. BLOCK the new subscription
+      return NextResponse.json(
+        { error: { message: "You already have an active subscription." } },
+        { status: 400 }
+      );
+    }
 
     // --- 3. Attach the new payment method to the customer ---
     // This links the card to the customer in Stripe
@@ -61,7 +167,12 @@ export async function POST(request) {
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
-      expand: ["latest_invoice.payment_intent"], // So we can check status
+      expand: ["latest_invoice.payment_intent"],
+      metadata: {
+        user_id: session.user.id,
+      },
+      payment_behavior: "default_incomplete",
+      payment_settings: { save_default_payment_method: "on_subscription" },
     });
 
     // --- 6. Send success response ---

@@ -47,7 +47,7 @@ export async function POST(req) {
         // Get user
         const { data: user } = await supabaseAdmin
           .from("users")
-          .select("id")
+          .select("user_id")
           .eq("stripe_customer_id", subscription.customer)
           .single();
 
@@ -59,7 +59,7 @@ export async function POST(req) {
         // Get plan from your DB
         const { data: plan } = await supabaseAdmin
           .from("subscription_plans")
-          .select("id")
+          .select("subscription_plans_id")
           .eq("stripe_price_id", priceId)
           .single();
 
@@ -72,14 +72,14 @@ export async function POST(req) {
         await supabaseAdmin
           .from("user_subscriptions")
           .update({ status: "inactive" })
-          .eq("user_id", user.id)
+          .eq("user_id", user.user_id)
           .eq("status", "active");
 
         // Create or update subscription record
         const { error } = await supabaseAdmin.from("user_subscriptions").upsert(
           {
-            user_id: user.id,
-            subscription_plans_id: plan.id,
+            user_id: user.user_id,
+            subscription_plans_id: plan.subscription_plans_id,
             stripe_subscription_id: subscription.id,
             start_date: new Date(
               subscription.current_period_start * 1000
@@ -109,7 +109,7 @@ export async function POST(req) {
         // 1. Fetch the User (we need user_id for the payments table)
         const { data: user } = await supabaseAdmin
           .from("users")
-          .select("id")
+          .select("user_id")
           .eq("stripe_customer_id", invoice.customer)
           .single();
 
@@ -119,7 +119,7 @@ export async function POST(req) {
           // insert happens milliseconds after this event.
           const { data: sub } = await supabaseAdmin
             .from("user_subscriptions")
-            .select("id")
+            .select("user_subscriptions_id")
             .eq("stripe_subscription_id", invoice.subscription)
             .single();
 
@@ -128,8 +128,8 @@ export async function POST(req) {
             .from("payments")
             .insert({
               stripe_charge_id: invoice.charge,
-              user_id: user.id,
-              subscription_id: sub ? sub.id : null,
+              user_id: user.user_id,
+              subscription_id: sub ? sub.user_subscriptions_id : null,
               amount: invoice.amount_paid / 100,
               status: "succeeded",
               booking_id: null,
@@ -137,7 +137,7 @@ export async function POST(req) {
 
           if (paymentError)
             console.error("Error logging payment:", paymentError);
-          else console.log(`Payment logged for user ${user.id}`);
+          else console.log(`Payment logged for user ${user.user_id}`);
         }
 
         // 4. Handle Subscription Renewal Logic (Existing logic)
@@ -167,12 +167,9 @@ export async function POST(req) {
       // One time payments
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
-
-        // 1. Extract the data you saved in Step 1
         const userId = paymentIntent.metadata.user_id;
         const bookingId = paymentIntent.metadata.booking_id;
 
-        // 2. Insert into Payments Table
         const { error } = await supabaseAdmin.from("payments").insert({
           stripe_charge_id: paymentIntent.latest_charge,
           user_id: userId,
