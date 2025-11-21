@@ -169,15 +169,33 @@ export async function POST(request) {
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: priceId }],
+      default_payment_method: paymentMethodId,
       expand: ["latest_invoice.payment_intent"],
-      metadata: {
-        user_id: user.id,
-      },
-      payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
+      metadata: { user_id: user.id },
     });
 
-    // --- 6. Send success response ---
+    // --- 6. Check payment status ---
+    const invoice = subscription.latest_invoice;
+    const paymentIntent = invoice?.payment_intent;
+
+    // If payment requires action (3D Secure)
+    if (paymentIntent?.status === "requires_action") {
+      return NextResponse.json({
+        requiresAction: true,
+        clientSecret: paymentIntent.client_secret,
+        subscriptionId: subscription.id,
+      });
+    }
+
+    // If payment failed
+    if (paymentIntent?.status === "requires_payment_method") {
+      return NextResponse.json(
+        { error: { message: "Payment failed. Please try a different card." } },
+        { status: 400 }
+      );
+    }
+
+    // Payment succeeded - subscription should become active shortly
     return NextResponse.json({ success: true, subscription });
   } catch (error) {
     console.error("Error creating subscription:", error.message);

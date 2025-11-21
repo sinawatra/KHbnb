@@ -18,6 +18,7 @@ const stripePromise = loadStripe(
 
 // --- 1. CHECKOUT FORM (For New Cards) ---
 function CheckoutForm({ bookingData }) {
+  const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
   const [message, setMessage] = useState(null);
@@ -25,68 +26,104 @@ function CheckoutForm({ bookingData }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      setMessage("Payment provider not initialized.");
+      return;
+    }
     setIsLoading(true);
 
+    // 1. ✅ FIRST STEP: Call submit() immediately on user click for validation
+    const { error: submitError } = await elements.submit();
+
+    if (submitError) {
+      setMessage(submitError.message);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // ✅ FIX 1: Get the Property ID safely
-      // We check the top-level propertyId first (saved by PropertyDetailsPage),
-      // then fallbacks inside the property object.
+      // 2. ✅ SECOND STEP: Create Payment Method ID now that validation passed
+      const { paymentMethod, error: createPmError } =
+        await stripe.createPaymentMethod({
+          elements,
+        });
+
+      if (createPmError) {
+        setMessage(createPmError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Get Property ID (safe)
       const propId =
         bookingData.propertyId ||
         bookingData.property?.properties_id ||
         bookingData.property?.id;
 
-      console.log("DEBUG: Creating booking for Property ID:", propId);
+      console.log("Property ID:", propId);
+      console.log("Booking data:", bookingData);
 
-      // A. Create the Booking in Supabase FIRST
+      const billingDetails = paymentMethod.billing_details;
+      if (!billingDetails?.address) {
+        throw new Error("Billing address is required for booking.");
+      }
+
+      // 4. Create Booking in Supabase
       const bookingRes = await fetch("/api/user/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
-          property_id: propId, // <--- Uses the safe ID
-          check_in_date: bookingData.checkIn,
-          check_out_date: bookingData.checkOut,
-          num_guests: bookingData.guests,
-          total_price: bookingData.total,
-          billing_address_line1: "123 Main St",
-          billing_city: "New York",
-          billing_country: "US",
-          billing_postal_code: "10001",
+          property_id: 27,
+          check_in_date: "2025-12-10",
+          check_out_date: "2025-12-15",
+          num_guests: 3,
+          total_price: 600,
+          billing_address_line1: "123 Tech Street",
+          billing_city: "Phnom Penh",
+          billing_country: "Cambodia",
+          billing_postal_code: "12000",
         }),
       });
+
+      // Check response before parsing
+      if (!bookingRes.ok) {
+        const errorData = await bookingRes.json();
+        throw new Error(
+          errorData.error || errorData.details || "Booking failed"
+        );
+      }
 
       const bookingJson = await bookingRes.json();
-      if (!bookingRes.ok)
-        throw new Error(bookingJson.error || "Booking failed");
-
       const myBookingId = bookingJson.booking.id;
 
-      // B. Create a NEW Payment Intent linked to this Booking ID
-      const intentRes = await fetch("/api/stripe/create-payment-intent", {
+      // 5. Charge New Card on the Server (pass PM ID)
+      const chargeRes = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
+          paymentMethodId: paymentMethod.id,
           total: bookingData.total,
-          bookingId: myBookingId, // Link payment to booking
+          bookingId: myBookingId,
         }),
       });
 
-      const intentJson = await intentRes.json();
-      if (!intentJson.clientSecret)
-        throw new Error(intentJson.error || "Payment init failed");
+      const chargeJson = await chargeRes.json();
 
-      // C. Confirm Payment with the NEW secret
-      const { error } = await stripe.confirmPayment({
-        elements,
-        clientSecret: intentJson.clientSecret, // Override the default secret
-        confirmParams: {
-          return_url: `${window.location.origin}/checkout?step=success`,
-        },
-      });
+      // 6. Handle Server Response (3DS or Success)
+      if (chargeJson.requiresAction && chargeJson.clientSecret) {
+        // Final step for 3D Secure/Authentication
+        const { error: confirmError } = await stripe.confirmCardPayment(
+          chargeJson.clientSecret
+        );
+        if (confirmError) throw new Error(confirmError.message);
 
-      if (error) {
-        setMessage(error.message);
+        router.push("/checkout?step=success");
+      } else if (chargeJson.success) {
+        router.push("/checkout?step=success");
+      } else {
+        throw new Error(chargeJson.error || "Payment failed.");
       }
     } catch (err) {
       console.error(err);
@@ -147,6 +184,7 @@ function StripePaymentForm({ bookingData }) {
   const options = {
     clientSecret,
     appearance: { theme: "stripe", labels: "floating" },
+    paymentMethodCreation: "manual",
   };
 
   if (!clientSecret) {
@@ -179,7 +217,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      // Redirect logic can go here
+      router.push("/register");
     }
 
     const data = sessionStorage.getItem("bookingData");
@@ -193,12 +231,13 @@ export default function CheckoutPage() {
   // Fetch saved cards
   useEffect(() => {
     if (user?.session) {
-      // ✅ FIX: Using your renamed endpoint
       fetch("/api/stripe/get-payment-methods")
         .then((res) => res.json())
         .then((data) => {
           if (data.paymentMethods?.length > 0) {
             setSavedCards(data.paymentMethods);
+            setSelectedCardId(data.paymentMethods[0].id);
+            setUseNewCard(false);
           } else {
             setUseNewCard(true);
           }
@@ -233,22 +272,38 @@ export default function CheckoutPage() {
         bookingData.property?.properties_id ||
         bookingData.property?.id;
 
+      console.log("Property ID being sent:", propId);
+      console.log("Full bookingData:", bookingData);
+
+      const billingDetails = paymentMethod.billing_details;
+      if (!billingDetails?.address) {
+        throw new Error("Billing address is required for booking.");
+      }
+
       // A. Create Booking FIRST
       const bookingRes = await fetch("/api/user/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
-          property_id: propId,
-          check_in_date: bookingData.checkIn,
-          check_out_date: bookingData.checkOut,
-          num_guests: bookingData.guests,
-          total_price: bookingData.total,
-          billing_address_line1: "123 Main St",
-          billing_city: "New York",
-          billing_country: "US",
-          billing_postal_code: "10001",
+          property_id: 27,
+          check_in_date: "2025-12-10",
+          check_out_date: "2025-12-15",
+          num_guests: 3,
+          total_price: 600,
+          billing_address_line1: "123 Tech Street",
+          billing_city: "Phnom Penh",
+          billing_country: "Cambodia",
+          billing_postal_code: "12000",
         }),
       });
+
+      const responseText = await bookingRes.text();
+      console.log("Booking API response:", responseText); // Debug log
+
+      if (!responseText) {
+        throw new Error("Empty response from booking API");
+      }
 
       const bookingJson = await bookingRes.json();
       if (!bookingRes.ok)
@@ -272,7 +327,7 @@ export default function CheckoutPage() {
       if (paymentResult.error) {
         setErrorMessage(paymentResult.error);
       } else {
-        router.push(`/checkout?step=success`);
+        router.push("/checkout?step=success");
       }
     } catch (error) {
       console.error("An error occurred:", error);

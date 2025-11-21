@@ -5,9 +5,14 @@ import { useState } from "react";
 export default function MapPin({ property, onClick, isSelected }) {
   const [isHovered, setIsHovered] = useState(false);
 
+  const lat = Number(property.latitude);
+  const lng = Number(property.longitude);
+
+  if (isNaN(lat) || isNaN(lng)) return null;
+
   return (
     <AdvancedMarker
-      position={{ lat: property.lat, lng: property.lng }}
+      position={{ lat: lat, lng: lng }}
       onClick={() => onClick(property)}
       zIndex={isHovered || isSelected ? 100 : 1}
     >
@@ -25,7 +30,7 @@ export default function MapPin({ property, onClick, isSelected }) {
           }
         `}
       >
-        ${property.pricePerNight}
+        ${property.price_per_night}
       </div>
     </AdvancedMarker>
   );
