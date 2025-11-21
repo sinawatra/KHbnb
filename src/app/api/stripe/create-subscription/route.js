@@ -15,11 +15,13 @@ export async function POST(request) {
     // --- 1. Authenticate user ---
     const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
 
-    if (!session) {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
         { error: { message: "Unauthorized" } },
         { status: 401 }
@@ -41,7 +43,7 @@ export async function POST(request) {
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (error || !profile || !profile.stripe_customer_id) {
@@ -119,7 +121,7 @@ export async function POST(request) {
             .from("user_subscriptions")
             .upsert(
               {
-                user_id: session.user.id,
+                user_id: user.id,
                 subscription_plans_id: plan.subscription_plans_id,
                 stripe_subscription_id: activeSub.id,
                 start_date: startDate,
@@ -169,7 +171,7 @@ export async function POST(request) {
       items: [{ price: priceId }],
       expand: ["latest_invoice.payment_intent"],
       metadata: {
-        user_id: session.user.id,
+        user_id: user.id,
       },
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },

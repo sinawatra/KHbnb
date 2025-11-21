@@ -9,9 +9,19 @@ export async function GET(request) {
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   // 1. Check if a user is logged in by getting their session.
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (sessionError || !session) {
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: { message: "Unauthorized" } },
+        { status: 401 }
+      );
+    }
+
+  if (sessionError || !user) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 
@@ -19,7 +29,7 @@ export async function GET(request) {
   const { data: userProfile, error: profileError } = await supabase
     .from('users')
     .select('*')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single(); // .single() returns one object instead of an array
 
   if (profileError) {

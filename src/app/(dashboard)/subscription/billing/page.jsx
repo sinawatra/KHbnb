@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, CheckCircle2, Circle } from "lucide-react";
 
 const plans = {
   annual: {
@@ -66,6 +66,10 @@ export default function BillingPage() {
   const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
     setStep(2);
+  };
+
+  const togglePlan = (plan) => {
+    setSelectedPlan(plan);
   };
 
   // 4. Called when user clicks the final "Confirm and Subscribe" button
@@ -129,114 +133,161 @@ export default function BillingPage() {
 
   return (
     <section className="w-full max-w-2xl mx-auto py-12 md:py-24 px-4">
-      {/* Stepper Navigation */}
-      <div className="flex justify-center gap-8 mb-8">
-        <span
-          className={`font-medium ${
-            step === 1 ? "font-semibold text-red-600" : "text-gray-400"
-          }`}
-        >
-          1. Choose billing
-        </span>
-        <span
-          className={`font-medium ${
-            step === 2 ? "font-semibold text-red-600" : "text-gray-400"
-          }`}
-        >
-          2. Review and purchase
-        </span>
+      <div className="flex justify-center items-center gap-4 mb-12">
+        <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step >= 1 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            1
+          </div>
+          <span
+            className={
+              step >= 1 ? "font-semibold text-gray-900" : "text-gray-500"
+            }
+          >
+            Billing
+          </span>
+        </div>
+
+        {/* Connector Line */}
+        <div
+          className={`w-12 h-0.5 ${step >= 2 ? "bg-red-600" : "bg-gray-200"}`}
+        />
+
+        <div className="flex items-center gap-2">
+          <div
+            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+              step === 2 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            2
+          </div>
+          <span
+            className={
+              step === 2 ? "font-semibold text-gray-900" : "text-gray-500"
+            }
+          >
+            Review
+          </span>
+        </div>
       </div>
 
       {/* --- STEP 1: CHOOSE PLAN --- */}
       {step === 1 && (
         <>
-          <h1 className="text-3xl font-bold text-center mb-10">
-            Choose a billing option for your Pro plan
-          </h1>
-          <div className="space-y-6">
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Choose your billing cycle
+            </h1>
+            <p className="text-gray-500 mt-2">Save money by billing annually</p>
+          </div>
+
+          <div className="space-y-4">
             {/* Annual Plan Card */}
-            <Card
-              className={`cursor-pointer transition-all hover:border-red-200 ${
+            <div
+              onClick={() => togglePlan(plans.annual)}
+              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
                 selectedPlan?.name === "Annual"
-                  ? "border-red-500 shadow-md"
-                  : ""
+                  ? "border-red-600 bg-red-50/30 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-red-200 hover:shadow-md"
               }`}
-              onClick={() => handlePlanSelect(plans.annual)}
             >
-              <CardContent className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{plans.annual.name}</h2>
-                  <p className="text-gray-500">{plans.annual.billing}</p>
-                </div>
+              {/* "Best Value" Label floating top right */}
+              <div className="absolute -top-3 right-6">
+                <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                  BEST VALUE
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-end">
-                    <span className="text-lg font-bold">
-                      {plans.annual.price}
-                      <span className="text-sm font-normal text-gray-600">
-                        {" "}
-                        USD /month
+                  {/* Radio Indicator */}
+                  {selectedPlan?.name === "Annual" ? (
+                    <CheckCircle2 className="h-6 w-6 text-red-600" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-gray-300 group-hover:text-red-300" />
+                  )}
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-gray-900">
+                        Annual
+                      </h2>
+                      {/* Improved Badge Style */}
+                      <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded">
+                        SAVE 10%
                       </span>
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="bg-gray-100 text-gray-700"
-                    >
-                      {plans.annual.badge}
-                    </Badge>
+                    </div>
+                    <p className="text-gray-500 text-sm mt-1">
+                      Billed as $50 /yearly
+                    </p>
                   </div>
-                  {/* 5. This button now selects the plan and moves to step 2 */}
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePlanSelect(plans.annual);
-                    }}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Select
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-gray-900">
+                    $4.00
+                  </span>
+                  <span className="text-gray-500 text-sm font-medium">
+                    {" "}
+                    /mo
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* Monthly Plan Card */}
-            <Card
-              className={`cursor-pointer transition-all hover:border-red-200 ${
+            <div
+              onClick={() => togglePlan(plans.monthly)}
+              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
                 selectedPlan?.name === "Monthly"
-                  ? "border-red-500 shadow-md"
-                  : ""
+                  ? "border-red-600 bg-red-50/30 shadow-sm"
+                  : "border-gray-200 bg-white hover:border-red-200 hover:shadow-md"
               }`}
-              onClick={() => handlePlanSelect(plans.monthly)}
             >
-              <CardContent className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">{plans.monthly.name}</h2>
-                  <p className="text-gray-500">{plans.monthly.billing}</p>
-                </div>
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <span className="text-lg font-bold">
-                    {plans.monthly.price}
-                    <span className="text-sm font-normal text-gray-600">
-                      {" "}
-                      USD /month
-                    </span>
-                  </span>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePlanSelect(plans.monthly);
-                    }}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Select
-                  </Button>
+                  {selectedPlan?.name === "Monthly" ? (
+                    <CheckCircle2 className="h-6 w-6 text-red-600" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-gray-300 group-hover:text-red-300" />
+                  )}
+
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Monthly</h2>
+                    <p className="text-gray-500 text-sm mt-1">Billed monthly</p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className="text-right">
+                  <span className="text-2xl font-bold text-gray-900">
+                    $5.00
+                  </span>
+                  <span className="text-gray-500 text-sm font-medium">
+                    {" "}
+                    /mo
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Continue Button */}
+          <div className="mt-8 flex justify-end">
+            <Button
+              onClick={() => setStep(2)} // Or handle logic
+              disabled={!selectedPlan}
+              className="bg-red-600 hover:bg-red-700 text-lg px-8 py-6"
+            >
+              Continue to Review
+            </Button>
           </div>
         </>
       )}
 
-      {/* --- STEP 2: REVIEW AND PURCHASE --- */}
+      {/* Step 2 : Review and Purchase */}
       {step === 2 && (
         <>
           <h1 className="text-3xl font-bold text-center mb-10">

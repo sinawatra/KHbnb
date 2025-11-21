@@ -8,19 +8,24 @@ export async function POST(request) {
     // 1. Authenticate User
     const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: { message: "Unauthorized" } },
+        { status: 401 }
+      );
     }
 
     // 2. Get the Active Subscription from DB
     const { data: subscription } = await supabase
       .from("user_subscriptions")
       .select("stripe_subscription_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("status", "active")
       .single();
 

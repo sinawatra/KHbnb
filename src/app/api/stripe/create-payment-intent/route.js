@@ -7,17 +7,23 @@ export async function POST(request) {
   try {
     const { total, paymentMethodId, bookingId } = await request.json();
     const supabase = createRouteHandlerClient({ cookies });
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
 
-    if (!session)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: { message: "Unauthorized" } },
+        { status: 401 }
+      );
+    }
 
     const { data: profile } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .single();
 
     if (!profile?.stripe_customer_id) {
@@ -37,7 +43,7 @@ export async function POST(request) {
         confirm: true,
         metadata: {
           booking_id: bookingId,
-          user_id: session.user.id,
+          user_id: user.id,
         },
         automatic_payment_methods: {
           enabled: true,
@@ -72,7 +78,7 @@ export async function POST(request) {
         customer: profile.stripe_customer_id,
         metadata: {
           booking_id: bookingId,
-          user_id: session.user.id,
+          user_id: user.id,
         },
         automatic_payment_methods: { enabled: true },
       });

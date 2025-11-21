@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe"; // Your server-side Stripe instance
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"; // ✅ Import Supabase server helper
-import { cookies } from "next/headers"; // ✅ Import Next.js cookies
+import { stripe } from "@/lib/stripe";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export async function POST() {
   try {
     // 1. Create a server-side Supabase client
-    const cookieStore = await cookies(); // ✅ Await it
+    const cookieStore = await cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // 2. Get the user's session from the cookies
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: { message: "Unauthorized" } },
         { status: 401 }
@@ -26,15 +27,15 @@ export async function POST() {
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
-      .eq("user_id", session.user.id) // Use the authenticated user's ID
+      .eq("user_id", user.id)
       .single();
 
     if (error || !profile || !profile.stripe_customer_id) {
-      console.error("Stripe customer ID not found for user:", session.user.id);
+      console.error("Stripe customer ID not found for user:", user.id);
       throw new Error("Stripe customer ID not found.");
     }
 
-    const customerId = profile.stripe_customer_id; // ✅ Now we have it!
+    const customerId = profile.stripe_customer_id;
 
     // 4. Create the Setup Intent with the real customer ID
     const setupIntent = await stripe.setupIntents.create({

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,9 +19,12 @@ import { useAuth } from "@/components/contexts/AuthContext";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, logout, fetchUserProfile } = useAuth();
 
   const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -29,49 +32,78 @@ export default function ProfilePage() {
     }
   }, [user, loading, router]);
 
-  if (loading) {
-    return <div>Loading profile...</div>;
-  }
+  if (loading) return <div className="p-4">Loading profile...</div>;
+  if (!user) return null;
+  if (!profile) return <div className="p-4">Error loading profile data.</div>;
 
-  if (!user) {
-    return <div>Redirecting to login...</div>;
-  }
+  const handleImageUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
 
-  if (!profile) {
-    return <div>Error loading profile data. Please try again.</div>;
-  }
+    try {
+      const formData = new FormData();
+      formData.append("avatar", selectedFile);
 
-  const handleImageUpload = () => {
-    if (!selectedFile) {
-      console.log("No file selected.");
-      return;
+      const res = await fetch("/api/user/profile/avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        await fetchUserProfile();
+        setIsDialogOpen(false);
+        setSelectedFile(null);
+      } else {
+        alert("Upload failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Network error uploading image");
+    } finally {
+      setUploading(false);
     }
-    console.log("Uploading file:", selectedFile);
-    //
-    // --- THIS IS WHERE YOU PUT YOUR SUPABASE UPLOAD LOGIC ---
-    //
-    // const { data, error } = await supabase.storage
-    //   .from('profile_image')
-    //   .upload(...)
-    //
-    // After it succeeds, close the dialog (if you want)
-    // and call fetchUserProfile() to refresh the data
+  };
+
+  // --- HANDLE ACCOUNT DELETION ---
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        await logout();
+        router.push("/");
+      } else {
+        alert("Failed to delete: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      alert("Network error deleting account");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
     <div className="pl-4">
       <h1 className="font-bold text-2xl">Profile</h1>
       <p>Photo</p>
-      <Dialog>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <div className="mb-10 mt-3 flex h-32 w-32 items-center justify-center rounded-full border bg-[#9797974D] relative group cursor-pointer">
-            {profile.image_url ? (
+          <div className="mb-10 mt-3 flex h-32 w-32 items-center justify-center rounded-full border bg-[#9797974D] relative group cursor-pointer overflow-hidden">
+            {profile.avatar_url ? (
               <Image
-                src={profile.image_url}
+                src={profile.avatar_url}
                 alt="Profile Picture"
-                width={128}
-                height={128}
-                className="rounded-full object-cover"
+                fill
+                className="object-cover"
+                sizes="128px"
+                priority
               />
             ) : (
               <Camera className="w-12 h-12 text-primary" />
@@ -84,27 +116,32 @@ export default function ProfilePage() {
 
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Select an Image to Upload</DialogTitle>
+            <DialogTitle>Update Profile Photo</DialogTitle>
           </DialogHeader>
           <DialogDescription>
             <Input
               type="file"
               accept="image/*"
               onChange={(e) => setSelectedFile(e.target.files[0])}
-              id="profile-upload"
             />
           </DialogDescription>
           <Button
-            type="button"
-            variant="destructive"
-            className="mt-4 w-full"
             onClick={handleImageUpload}
+            disabled={!selectedFile || uploading}
+            className="w-full"
           >
-            Save
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
+              </>
+            ) : (
+              "Save Change"
+            )}
           </Button>
         </DialogContent>
       </Dialog>
 
+      {/* INFO SECTION */}
       <h3 className="text-[#00000080] font-semibold">Name</h3>
       <p className="font-medium mb-6">{profile.full_name}</p>
 
@@ -117,7 +154,6 @@ export default function ProfilePage() {
       <h3 className="text-[#00000080] font-semibold">Country</h3>
       <div className="flex gap-10 mb-6">
         <p className="font-medium">Cambodia</p>
-        <button className="font-bold mr-10 hover:cursor-pointer">Edit</button>
       </div>
 
       <h3 className="text-[#00000080] font-semibold">Phone Number</h3>
@@ -149,12 +185,21 @@ export default function ProfilePage() {
                   type="button"
                   variant="destructive"
                   className="shadow-md"
+                  disabled={deleting}
                 >
                   No, take me back
                 </Button>
               </DialogClose>
-              <Button type="button" variant="ghost">
-                Yes, continue with the deletion of the account
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting
+                  ? "Deleting..."
+                  : "Yes, continue with the deletion of the account"}
               </Button>
             </div>
           </DialogContent>
