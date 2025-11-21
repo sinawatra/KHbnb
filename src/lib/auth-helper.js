@@ -32,3 +32,25 @@ export async function getAuthenticatedUser(request) {
 
   return null;
 }
+
+export async function getAdminUser(request) {
+  const auth = await getAuthenticatedUser(request);
+  if (!auth) return null;
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
+  const { data: profile } = await supabaseAdmin
+    .from("users")
+    .select("role")
+    .eq("user_id", auth.user.id)
+    .single();
+
+  if (profile?.role === "admin") {
+    return { user: auth.user, adminClient: supabaseAdmin };
+  }
+
+  return null;
+}
