@@ -13,7 +13,6 @@ export async function GET(request) {
       },
       { status: 403 }
     );
-  }
 
   const { adminClient } = authResult;
 
@@ -79,17 +78,12 @@ export async function GET(request) {
         message: "error",
         data: { details: propertiesResult.error.message },
       },
-      { status: 500 }
-    );
-  }
+      recentBookings,
+      topProperties
+    }, { status: 200, message: 'Overview data fetched successfully' });
 
-  // 4. Response: Success
-  return NextResponse.json({
-    success: true,
-    message: "Overview data retrieved successfully",
-    data: {
-      recentBookings: bookingsResult.data,
-      recentProperties: propertiesResult.data,
-    },
-  });
+  } catch (error) {
+    console.error('Error fetching overview:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
