@@ -21,7 +21,15 @@ export default function Properties() {
     fetch("/api/properties")
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) setFilteredListings(data.data);
+        if (data.success) {
+          const validProperties = data.data.map((p) => ({
+            ...p,
+            latitude: Number(p.latitude),
+            longitude: Number(p.longitude),
+          }));
+
+          setFilteredListings(validProperties);
+        }
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -68,7 +76,10 @@ export default function Properties() {
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {filteredListings.map((property) => (
-                <PropertyCard key={property.properties_id} property={property} />
+                <PropertyCard
+                  key={property.properties_id}
+                  property={property}
+                />
               ))}
             </div>
           </section>
@@ -90,14 +101,31 @@ export default function Properties() {
                 mapId="af1b14d4f5d1b9695cb5c9d6"
                 onClick={() => setSelectedProperty(null)}
               >
-                {filteredListings.map((property) => (
-                  <MapPin
-                    key={property.properties_id}
-                    property={property}
-                    onClick={setSelectedProperty}
-                    isSelected={selectedProperty?.properties_id === property.properties_id}
-                  />
-                ))}
+                {filteredListings
+                  // 1. FILTER: Only map properties with valid lat/lng
+                  .filter(
+                    (property) =>
+                      property.latitude != null &&
+                      property.longitude != null &&
+                      !isNaN(Number(property.latitude)) &&
+                      !isNaN(Number(property.longitude))
+                  )
+                  .map((property) => (
+                    <MapPin
+                      key={property.properties_id}
+                      property={property}
+                      // 2. SAFETY: Ensure the Pin component gets Numbers, not strings
+                      position={{
+                        lat: Number(property.latitude),
+                        lng: Number(property.longitude),
+                      }}
+                      onClick={setSelectedProperty}
+                      isSelected={
+                        selectedProperty?.properties_id ===
+                        property.properties_id
+                      }
+                    />
+                  ))}
               </Map>
             </div>
 
