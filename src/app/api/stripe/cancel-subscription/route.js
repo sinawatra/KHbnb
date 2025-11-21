@@ -22,16 +22,34 @@ export async function POST(request) {
     }
 
     // 2. Get the Active Subscription from DB
-    const { data: subscription } = await supabase
+    const { data: subscription, error: subError } = await supabase
       .from("user_subscriptions")
       .select("stripe_subscription_id")
-      .eq("user_id", user.user_id)
+      .eq("user_id", user.id)
       .eq("status", "active")
       .single();
 
-    if (!subscription) {
+    if (!subscription || subError) {
       return NextResponse.json(
         { error: "No active subscription found" },
+        { status: 400 }
+      );
+    }
+
+    // Check Stripe status first
+    const stripeSubscription = await stripe.subscriptions.retrieve(
+      subscription.stripe_subscription_id
+    );
+
+    // If already cancelled or marked for cancellation
+    if (
+      stripeSubscription.status === "canceled" ||
+      stripeSubscription.cancel_at_period_end
+    ) {
+      return NextResponse.json(
+        {
+          error: "Subscription is already cancelled or marked for cancellation",
+        },
         { status: 400 }
       );
     }

@@ -38,6 +38,27 @@ export async function POST(req) {
       case "customer.subscription.updated": {
         const subscription = event.data.object;
 
+        // If marked for cancellation but still active
+        if (
+          subscription.cancel_at_period_end &&
+          subscription.status === "active"
+        ) {
+          await supabaseAdmin
+            .from("user_subscriptions")
+            .update({
+              status: "active",
+              end_date: new Date(
+                subscription.current_period_end * 1000
+              ).toISOString(),
+            })
+            .eq("stripe_subscription_id", subscription.id);
+
+          console.log(
+            `Subscription marked for cancellation: ${subscription.id}`
+          );
+          break;
+        }
+
         if (subscription.status !== "active") break;
 
         const periodStart =
