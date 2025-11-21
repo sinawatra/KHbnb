@@ -1,61 +1,5 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-
-async function getAdminUser(supabase, request) {
-  let user = null;
-
-  const {
-    data: { user: cookieUser },
-  } = await supabase.auth.getUser();
-
-  if (cookieUser) {
-    user = cookieUser;
-  } else {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-
-      const { data, error } = await supabaseAdmin.auth.getUser(token);
-
-      if (data?.user) {
-        user = data.user;
-      }
-    }
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  // Use service role client to bypass RLS
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-
-  const { data: profile } = await supabaseAdmin
-    .from("users")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  console.log("Profile role:", profile?.role);
-
-  return profile && profile.role === "admin" ? user : null;
-}
+import { getAdminUser } from "@/lib/auth-helper";
 
 async function uploadPropertyImages(supabase, images, propertyId) {
   const imageUrls = [];
@@ -70,9 +14,7 @@ async function uploadPropertyImages(supabase, images, propertyId) {
   await Promise.all(
     images.map(async (image) => {
       if (!image || image.size === 0) return;
-
       const fileName = `${propertyId}/${Date.now()}-${image.name}`;
-
       const { error } = await supabase.storage
         .from("properties")
         .upload(fileName, image);
@@ -92,11 +34,8 @@ async function uploadPropertyImages(supabase, images, propertyId) {
 }
 
 export async function GET(request) {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-  const adminUser = await getAdminUser(supabase, request);
-  if (!adminUser) {
+  const authResult = await getAdminUser(request);
+  if (!authResult) {
     return NextResponse.json(
       {
         success: false,
@@ -108,7 +47,10 @@ export async function GET(request) {
   }
 
   console.log("Admin fetching all properties...");
-  const { data: properties, error } = await supabase.from("properties").select(`
+
+  const { data: properties, error } = await authResult.adminClient.from(
+    "properties"
+  ).select(`
       *,
       provinces ( name )
     `);
@@ -128,11 +70,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const cookieStore = cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-  const adminUser = await getAdminUser(supabase, request);
-  if (!adminUser) {
+  const authResult = await getAdminUser(request);
+  if (!authResult) {
     return NextResponse.json(
       {
         success: false,
@@ -161,10 +100,10 @@ export async function POST(request) {
     host_phone: formData.get("host_phone"),
     host_email: formData.get("host_email"),
     status: formData.get("status"),
-    owner_id: adminUser.id,
+    owner_id: authResult.user.id,
   };
 
-  const { data: newProperty, error: insertError } = await supabase
+  const { data: newProperty, error: insertError } = await authResult.adminClient
     .from("properties")
     .insert(propertyData)
     .select()
@@ -183,17 +122,18 @@ export async function POST(request) {
   }
 
   const imageUrls = await uploadPropertyImages(
-    supabase,
+    authResult.adminClient,
     images,
     newProperty.properties_id
   );
 
-  const { data: finalProperty, error: updateError } = await supabase
-    .from("properties")
-    .update({ image_urls: imageUrls })
-    .eq("properties_id", newProperty.properties_id)
-    .select("*, provinces(name)")
-    .single();
+  const { data: finalProperty, error: updateError } =
+    await authResult.adminClient
+      .from("properties")
+      .update({ image_urls: imageUrls })
+      .eq("properties_id", newProperty.properties_id)
+      .select("*, provinces(name)")
+      .single();
 
   if (updateError) {
     console.error("Image URL update error:", updateError.message);
