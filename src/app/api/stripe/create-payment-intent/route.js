@@ -6,7 +6,8 @@ import { cookies } from "next/headers";
 export async function POST(request) {
   try {
     const { total, paymentMethodId, bookingId } = await request.json();
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = await cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     const {
       data: { user },
@@ -62,10 +63,7 @@ export async function POST(request) {
           clientSecret: paymentIntent.client_secret,
           requiresAction: true,
         });
-      }
-
-      // 3. If it failed
-      else {
+      } else {
         throw new Error(`Payment failed with status: ${paymentIntent.status}`);
       }
     }

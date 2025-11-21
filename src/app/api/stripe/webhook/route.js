@@ -34,17 +34,24 @@ export async function POST(req) {
 
   try {
     switch (event.type) {
-      // When a subscription is first created (your flow uses direct API)
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const subscription = event.data.object;
 
-        // Only process active subscriptions
         if (subscription.status !== "active") break;
+
+        const periodStart =
+          subscription.current_period_start || subscription.start_date;
+        const periodEnd =
+          subscription.current_period_end || subscription.billing_cycle_anchor;
+
+        if (!periodStart || !periodEnd) {
+          console.error("Missing period dates:", subscription);
+          break;
+        }
 
         const priceId = subscription.items.data[0].price.id;
 
-        // Get user
         const { data: user } = await supabaseAdmin
           .from("users")
           .select("user_id")
@@ -56,7 +63,6 @@ export async function POST(req) {
           break;
         }
 
-        // Get plan from your DB
         const { data: plan } = await supabaseAdmin
           .from("subscription_plans")
           .select("subscription_plans_id")
@@ -68,25 +74,19 @@ export async function POST(req) {
           break;
         }
 
-        // Deactivate old subscriptions
         await supabaseAdmin
           .from("user_subscriptions")
           .update({ status: "inactive" })
           .eq("user_id", user.user_id)
           .eq("status", "active");
 
-        // Create or update subscription record
         const { error } = await supabaseAdmin.from("user_subscriptions").upsert(
           {
             user_id: user.user_id,
             subscription_plans_id: plan.subscription_plans_id,
             stripe_subscription_id: subscription.id,
-            start_date: new Date(
-              subscription.current_period_start * 1000
-            ).toISOString(),
-            end_date: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
+            start_date: new Date(periodStart * 1000).toISOString(),
+            end_date: new Date(periodEnd * 1000).toISOString(),
             status: "active",
           },
           {
@@ -97,16 +97,27 @@ export async function POST(req) {
         if (error) {
           console.error("Supabase error:", error);
         } else {
-          console.log(`Subscription activated for user ${user.id}`);
+          console.log(`Subscription activated for user ${user.user_id}`);
         }
         break;
       }
 
-      // When subscription renews successfully
+      case "charge.succeeded": {
+        const charge = event.data.object;
+
+        // Only log if it's NOT a subscription charge (subscriptions handled by invoice.paid)
+        if (charge.invoice) {
+          console.log("Subscription charge - will be handled by invoice.paid");
+          break;
+        }
+
+        console.log(`Charge succeeded: ${charge.id}`);
+        break;
+      }
+
       case "invoice.paid": {
         const invoice = event.data.object;
 
-        // 1. Fetch the User (we need user_id for the payments table)
         const { data: user } = await supabaseAdmin
           .from("users")
           .select("user_id")
@@ -114,16 +125,12 @@ export async function POST(req) {
           .single();
 
         if (user) {
-          // 2. Fetch the internal Subscription ID (needed if payments.subscription_id is a foreign key)
-          // Note: This might return null on the very first invoice if the subscription
-          // insert happens milliseconds after this event.
           const { data: sub } = await supabaseAdmin
             .from("user_subscriptions")
             .select("user_subscriptions_id")
             .eq("stripe_subscription_id", invoice.subscription)
             .single();
 
-          // 3. INSERT into the 'payments' table
           const { error: paymentError } = await supabaseAdmin
             .from("payments")
             .insert({
@@ -140,7 +147,6 @@ export async function POST(req) {
           else console.log(`Payment logged for user ${user.user_id}`);
         }
 
-        // 4. Handle Subscription Renewal Logic (Existing logic)
         if (
           invoice.subscription &&
           invoice.billing_reason === "subscription_cycle"
@@ -164,9 +170,15 @@ export async function POST(req) {
         break;
       }
 
-      // One time payments
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
+
+        // Skip if this is a subscription payment (handled by invoice.paid)
+        if (paymentIntent.invoice) {
+          console.log("Skipping subscription payment_intent");
+          break;
+        }
+
         const userId = paymentIntent.metadata.user_id;
         const bookingId = paymentIntent.metadata.booking_id;
 
@@ -196,7 +208,6 @@ export async function POST(req) {
         break;
       }
 
-      // When payment fails
       case "invoice.payment_failed": {
         const invoice = event.data.object;
 
@@ -207,12 +218,10 @@ export async function POST(req) {
             .eq("stripe_subscription_id", invoice.subscription);
 
           console.log(`Payment failed for: ${invoice.subscription}`);
-
         }
         break;
       }
 
-      // When subscription is canceled
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
 
