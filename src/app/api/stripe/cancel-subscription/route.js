@@ -25,7 +25,7 @@ export async function POST(request) {
     const { data: subscription } = await supabase
       .from("user_subscriptions")
       .select("stripe_subscription_id")
-      .eq("user_id", user.id)
+      .eq("user_id", user.user_id)
       .eq("status", "active")
       .single();
 
