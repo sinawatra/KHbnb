@@ -1,16 +1,17 @@
 "use client";
+
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { ListFilterPlus, X, Plus, Minus } from "lucide-react";
 import PropertyCard from "@/components/PropertyCard";
 import Searchbar from "@/components/Seachbar";
 import Footer from "@/components/Footer";
 import Filter from "@/components/Filter";
-import { useState, useEffect } from "react";
 import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import MapPin from "@/components/MapPin";
 import MapPropertyCard from "@/components/MapPropertyCard";
 
-export default function Properties() {
+function PropertiesContent() {
   const searchParams = useSearchParams();
   const [filteredListings, setFilteredListings] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
@@ -33,7 +34,7 @@ export default function Properties() {
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
-        console.log("🔍 API Response:", data); // ← ADD THIS
+        console.log("🔍 API Response:", data);
         if (data.success) {
           const validProperties = data.data.map((p) => ({
             ...p,
@@ -41,7 +42,7 @@ export default function Properties() {
             longitude: Number(p.longitude),
           }));
 
-          console.log("🏠 First property:", validProperties[0]); // ← ADD THIS
+          console.log("First property:", validProperties[0]);
           setFilteredListings(validProperties);
         }
       })
@@ -140,7 +141,6 @@ export default function Properties() {
                 onClick={() => setSelectedProperty(null)}
               >
                 {filteredListings
-                  // 1. FILTER: Only map properties with valid lat/lng
                   .filter(
                     (property) =>
                       property.latitude != null &&
@@ -152,7 +152,6 @@ export default function Properties() {
                     <MapPin
                       key={property.properties_id}
                       property={property}
-                      // 2. SAFETY: Ensure the Pin component gets Numbers, not strings
                       position={{
                         lat: Number(property.latitude),
                         lng: Number(property.longitude),
@@ -206,5 +205,15 @@ export default function Properties() {
         </div>
       )}
     </APIProvider>
+  );
+}
+
+export default function Properties() {
+  return (
+    <Suspense
+      fallback={<div className="p-6 text-center">Loading properties...</div>}
+    >
+      <PropertiesContent />
+    </Suspense>
   );
 }
