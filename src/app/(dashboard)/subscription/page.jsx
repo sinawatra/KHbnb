@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Check, CheckCircle2, XCircle } from "lucide-react";
+import { Check, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -40,17 +40,22 @@ export default async function SubscriptionPage() {
   }
 
   let isPro = false;
+  let isCanceling = false;
 
   if (user) {
     const { data: subscription } = await supabase
       .from("user_subscriptions")
       .select("status")
       .eq("user_id", user.id)
-      .eq("status", "active")
+      .in("status", ["active", "cancelling"])
       .single();
 
     if (subscription) {
       isPro = true;
+
+      if (subscription.status === "cancelling") {
+        isCanceling = true;
+      }
     }
   }
 
@@ -133,7 +138,14 @@ export default async function SubscriptionPage() {
                   </div>
 
                   <div className="w-full">
-                    <CancelSubscriptionButton />
+                    {!isCanceling ? (
+                      <CancelSubscriptionButton />
+                    ) : (
+                      <div className="w-full h-10 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-700 flex items-center justify-center gap-2 text-sm font-medium">
+                        <AlertCircle className="h-4 w-4" />
+                        Cancels at period end
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (

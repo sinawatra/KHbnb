@@ -32,7 +32,7 @@ function CheckoutForm({ bookingData }) {
     }
     setIsLoading(true);
 
-    // 1. ✅ FIRST STEP: Call submit() immediately on user click for validation
+    // 1. Call submit() immediately on user click for validation
     const { error: submitError } = await elements.submit();
 
     if (submitError) {
@@ -42,7 +42,7 @@ function CheckoutForm({ bookingData }) {
     }
 
     try {
-      // 2. ✅ SECOND STEP: Create Payment Method ID now that validation passed
+      // 2. Create Payment Method ID now that validation passed
       const { paymentMethod, error: createPmError } =
         await stripe.createPaymentMethod({
           elements,
@@ -206,11 +206,11 @@ function StripePaymentForm({ bookingData }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loading, user } = useAuth();
+  const { loading, user, profile } = useAuth();
   const [bookingData, setBookingData] = useState(null);
   const step = searchParams.get("step") || "confirm-and-pay";
   const [savedCards, setSavedCards] = useState([]);
-  const [useNewCard, setUseNewCard] = useState(false);
+  const [useNewCard, setUseNewCard] = useState(true);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -230,10 +230,18 @@ export default function CheckoutPage() {
 
   // Fetch saved cards
   useEffect(() => {
-    if (user?.session) {
+    if (user) {
+      console.log("🔍 User session:", {
+        userId: user.id,
+        email: user.email,
+      });
+
       fetch("/api/stripe/get-payment-methods")
         .then((res) => res.json())
         .then((data) => {
+          if (data.error) {
+            console.error("API Error:", data.error);
+          }
           if (data.paymentMethods?.length > 0) {
             setSavedCards(data.paymentMethods);
             setSelectedCardId(data.paymentMethods[0].id);
@@ -242,7 +250,10 @@ export default function CheckoutPage() {
             setUseNewCard(true);
           }
         })
-        .catch(() => setUseNewCard(true));
+        .catch((err) => {
+          console.error("Fetch error:", err);
+          setUseNewCard(true);
+        });
     }
   }, [user]);
 
@@ -261,24 +272,14 @@ export default function CheckoutPage() {
       console.error("No card selected.");
       return;
     }
-
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      // ✅ FIX: Safe Property ID access
       const propId =
         bookingData.propertyId ||
         bookingData.property?.properties_id ||
         bookingData.property?.id;
-
-      console.log("Property ID being sent:", propId);
-      console.log("Full bookingData:", bookingData);
-
-      const billingDetails = paymentMethod.billing_details;
-      if (!billingDetails?.address) {
-        throw new Error("Billing address is required for booking.");
-      }
 
       // A. Create Booking FIRST
       const bookingRes = await fetch("/api/user/bookings", {
@@ -291,34 +292,29 @@ export default function CheckoutPage() {
           check_out_date: bookingData.checkOut,
           num_guests: bookingData.guests,
           total_price: bookingData.total,
-          billing_address_line1: "123 Tech Street",
-          billing_city: "Phnom Penh",
-          billing_country: "Cambodia",
-          billing_postal_code: "12000",
+          billing_address_line1: bookingData.billingAddress?.line1 || "N/A",
+          billing_city: bookingData.billingAddress?.city || "N/A",
+          billing_country: bookingData.billingAddress?.country || "N/A",
+          billing_postal_code: bookingData.billingAddress?.postal_code || "N/A",
         }),
       });
 
-      const responseText = await bookingRes.text();
-      console.log("Booking API response:", responseText); // Debug log
-
-      if (!responseText) {
-        throw new Error("Empty response from booking API");
+      if (!bookingRes.ok) {
+        const errorData = await bookingRes.json();
+        throw new Error(errorData.error || "Booking creation failed");
       }
 
       const bookingJson = await bookingRes.json();
-      if (!bookingRes.ok)
-        throw new Error(bookingJson.error || "Booking creation failed");
-
       const myBookingId = bookingJson.booking.id;
 
-      // B. Charge Saved Card (Linked to Booking ID)
+      // B. Charge Saved Card
       const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentMethodId: selectedCardId,
           total: bookingData.total,
-          bookingId: myBookingId, // Link payment to booking
+          bookingId: myBookingId,
         }),
       });
 
@@ -380,10 +376,7 @@ export default function CheckoutPage() {
                   Log in or sign up
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Logged in as{" "}
-                  {user?.profile?.full_name ||
-                    user?.session?.user?.email ||
-                    "User"}
+                  Logged in as {profile?.full_name || user?.email || "User"}{" "}
                 </p>
               </div>
 

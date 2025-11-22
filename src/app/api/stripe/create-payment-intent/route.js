@@ -43,7 +43,7 @@ export async function POST(request) {
         off_session: true,
         confirm: true,
         metadata: {
-          booking_id: bookingId,
+          booking_id: bookingId || "",
           user_id: user.id,
         },
         automatic_payment_methods: {
@@ -74,8 +74,9 @@ export async function POST(request) {
         amount,
         currency: "usd",
         customer: profile.stripe_customer_id,
+        setup_future_usage: "off_session",
         metadata: {
-          booking_id: bookingId,
+          booking_id: bookingId || "",
           user_id: user.id,
         },
         automatic_payment_methods: { enabled: true },
