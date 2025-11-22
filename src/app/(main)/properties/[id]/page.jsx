@@ -193,7 +193,7 @@ export default function PropertyDetailsPage({ params }) {
 
   // Keywords that identify a "Rule"
   const RULE_KEYWORDS = [
-    "no ",
+    "no smoking",
     "check-in",
     "check-out",
     "quiet",
