@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ListFilterPlus, X, Plus, Minus } from "lucide-react";
 import PropertyCard from "@/components/PropertyCard";
 import Searchbar from "@/components/Seachbar";
@@ -11,6 +11,7 @@ import MapPin from "@/components/MapPin";
 import MapPropertyCard from "@/components/MapPropertyCard";
 
 export default function Properties() {
+  const searchParams = useSearchParams();
   const [filteredListings, setFilteredListings] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showMap, setShowMap] = useState(false);
@@ -18,9 +19,21 @@ export default function Properties() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/properties")
+    const province = searchParams.get("province");
+    const guests = searchParams.get("guests");
+
+    const params = new URLSearchParams();
+    if (province) params.append("province", province);
+    if (guests) params.append("guests", guests);
+
+    const url = `/api/properties${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
+        console.log("🔍 API Response:", data); // ← ADD THIS
         if (data.success) {
           const validProperties = data.data.map((p) => ({
             ...p,
@@ -28,12 +41,13 @@ export default function Properties() {
             longitude: Number(p.longitude),
           }));
 
+          console.log("🏠 First property:", validProperties[0]); // ← ADD THIS
           setFilteredListings(validProperties);
         }
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchParams]);
 
   const handleApplyFilters = (filters) => {
     setFilteredListings((prev) =>
