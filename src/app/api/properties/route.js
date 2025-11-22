@@ -2,14 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
-  // We use the 'server' client, as this is a public route
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
   
   // Get the URL search parameters
-  // (e.g., /api/properties?province=Kampot&guests=2)
   const { searchParams } = new URL(request.url);
   const provinceName = searchParams.get('province');
   const guests = searchParams.get('guests');
@@ -19,18 +17,16 @@ export async function GET(request) {
     .from('properties')
     .select(`
       *,
-      provinces ( name )
+      provinces!inner ( name )
     `)
     .eq('status', 'Active');
 
   // Add filters if they exist
   if (provinceName) {
-    // We filter on the *joined* table's name
-    query = query.ilike('provinces.name', provinceName);
+    query = query.eq('provinces.name', provinceName);
   }
   
   if (guests) {
-    // Find properties that can host *at least* this many guests
     query = query.gte('max_guests', guests);
   }
   
