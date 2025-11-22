@@ -145,28 +145,83 @@ export async function POST(req) {
           .eq("stripe_customer_id", invoice.customer)
           .single();
 
-        if (user) {
-          const { data: sub } = await supabaseAdmin
-            .from("user_subscriptions")
-            .select("user_subscriptions_id")
-            .eq("stripe_subscription_id", invoice.subscription)
+        if (!user) {
+          console.error("User not found for invoice:", invoice.id);
+          break;
+        }
+
+        let { data: sub } = await supabaseAdmin
+          .from("user_subscriptions")
+          .select("user_subscriptions_id")
+          .eq("stripe_subscription_id", invoice.subscription)
+          .single();
+
+        if (!sub && invoice.subscription) {
+          console.log(
+            "Race condition: Subscription not found in DB yet. Creating it now..."
+          );
+
+          // A. Fetch fresh subscription details from Stripe
+          const stripeSub = await stripe.subscriptions.retrieve(
+            invoice.subscription
+          );
+
+          // B. Find the plan ID
+          const priceId = stripeSub.items.data[0].price.id;
+          const { data: plan } = await supabaseAdmin
+            .from("subscription_plans")
+            .select("subscription_plans_id")
+            .eq("stripe_price_id", priceId)
             .single();
 
-          const { error: paymentError } = await supabaseAdmin
-            .from("payments")
-            .insert({
-              stripe_charge_id: invoice.charge,
-              user_id: user.user_id,
-              subscription_id: sub ? sub.user_subscriptions_id : null,
-              amount: invoice.amount_paid / 100,
-              status: "succeeded",
-              booking_id: null,
-            });
+          if (plan) {
+            // C. Insert the subscription immediately
+            const { data: newSub, error: insertError } = await supabaseAdmin
+              .from("user_subscriptions")
+              .upsert(
+                {
+                  user_id: user.user_id,
+                  subscription_plans_id: plan.subscription_plans_id,
+                  stripe_subscription_id: stripeSub.id,
+                  start_date: new Date(
+                    stripeSub.current_period_start * 1000
+                  ).toISOString(),
+                  end_date: new Date(
+                    stripeSub.current_period_end * 1000
+                  ).toISOString(),
+                  status: "active",
+                },
+                { onConflict: "stripe_subscription_id" }
+              )
+              .select("user_subscriptions_id")
+              .single();
 
-          if (paymentError)
-            console.error("Error logging payment:", paymentError);
-          else console.log(`Payment logged for user ${user.user_id}`);
+            if (!insertError) {
+              sub = newSub;
+            } else {
+              console.error("Failed to recover subscription:", insertError);
+            }
+          }
         }
+        // ----------------------------------------------------------------
+
+        // 3. Insert Payment (Now sub.user_subscriptions_id should exist)
+        const { error: paymentError } = await supabaseAdmin
+          .from("payments")
+          .insert({
+            stripe_charge_id: invoice.charge,
+            user_id: user.user_id,
+            subscription_id: sub ? sub.user_subscriptions_id : null,
+            amount: invoice.amount_paid / 100,
+            status: "succeeded",
+            booking_id: null,
+          });
+
+        if (paymentError) console.error("Error logging payment:", paymentError);
+        else
+          console.log(
+            `Payment logged for user ${user.user_id} (Sub ID: ${sub?.user_subscriptions_id})`
+          );
 
         if (
           invoice.subscription &&
@@ -211,14 +266,17 @@ export async function POST(req) {
           break;
         }
 
-        const { error } = await supabaseAdmin.from("payments").insert({
-          stripe_charge_id: paymentIntent.latest_charge,
-          user_id: userId,
-          booking_id: bookingId ? bookingId : null,
-          subscription_id: null,
-          amount: paymentIntent.amount / 100,
-          status: "succeeded",
-        });
+        const { error } = await supabaseAdmin.from("payments").upsert(
+          {
+            stripe_charge_id: paymentIntent.latest_charge,
+            user_id: userId,
+            booking_id: bookingId ? bookingId : null,
+            subscription_id: null,
+            amount: paymentIntent.amount / 100,
+            status: "succeeded",
+          },
+          { onConflict: "stripe_charge_id" }
+        );
 
         if (bookingId) {
           await supabaseAdmin
