@@ -38,7 +38,19 @@ export async function POST(req) {
       case "customer.subscription.updated": {
         const subscription = event.data.object;
 
-        // If marked for cancellation but still active
+        const periodStart =
+          subscription.current_period_start || subscription.start_date;
+
+        // Use fallback if current_period_end is missing
+        const periodEnd =
+          subscription.current_period_end || subscription.billing_cycle_anchor;
+
+        // If we still don't have a valid date, we can't proceed safely
+        if (!periodEnd) {
+          console.error("Missing period dates in webhook:", subscription.id);
+          break;
+        }
+        // IMPORTANT: If marked for cancellation, update status to "cancelling" in DB
         if (
           subscription.cancel_at_period_end &&
           subscription.status === "active"
@@ -46,10 +58,8 @@ export async function POST(req) {
           await supabaseAdmin
             .from("user_subscriptions")
             .update({
-              status: "active",
-              end_date: new Date(
-                subscription.current_period_end * 1000
-              ).toISOString(),
+              status: "cancelling",
+              end_date: new Date(periodEnd * 1000).toISOString(),
             })
             .eq("stripe_subscription_id", subscription.id);
 
@@ -60,17 +70,6 @@ export async function POST(req) {
         }
 
         if (subscription.status !== "active") break;
-
-        const periodStart =
-          subscription.current_period_start || subscription.start_date;
-        const periodEnd =
-          subscription.current_period_end || subscription.billing_cycle_anchor;
-
-        if (!periodStart || !periodEnd) {
-          console.error("Missing period dates:", subscription);
-          break;
-        }
-
         const priceId = subscription.items.data[0].price.id;
 
         const { data: user } = await supabaseAdmin
@@ -95,12 +94,13 @@ export async function POST(req) {
           break;
         }
 
+        // Deactivate ALL old subscriptions
         await supabaseAdmin
           .from("user_subscriptions")
           .update({ status: "inactive" })
-          .eq("user_id", user.user_id)
-          .eq("status", "active");
+          .eq("user_id", user.user_id);
 
+        // Insert/update THIS subscription
         const { error } = await supabaseAdmin.from("user_subscriptions").upsert(
           {
             user_id: user.user_id,

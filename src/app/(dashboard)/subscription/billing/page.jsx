@@ -11,17 +11,17 @@ import { Loader2, Plus, CheckCircle2, Circle } from "lucide-react";
 
 const plans = {
   annual: {
-    priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
+    priceId: "price_1SWDo53kW2gspTZHPxa68CMg",
     name: "Annual",
     price: "$4.00",
-    billing: "Billed as one payment of $50 /yearly",
+    billing: "Billed as one payment of $50 / yearly",
     badge: "save 10%",
   },
   monthly: {
-    priceId: "price_1SSJwTDozsimq2UIcpm61UDn",
+    priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
     name: "Monthly",
     price: "$5.00",
-    billing: "Billed as one payment of $5 /monthly",
+    billing: "Billed as one payment of $5 / monthly",
     badge: null,
   },
 };
