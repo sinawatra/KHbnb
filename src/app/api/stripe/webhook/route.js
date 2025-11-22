@@ -203,6 +203,14 @@ export async function POST(req) {
         const userId = paymentIntent.metadata.user_id;
         const bookingId = paymentIntent.metadata.booking_id;
 
+        if (!userId) {
+          console.error(
+            "Missing user_id in payment intent metadata:",
+            paymentIntent.id
+          );
+          break;
+        }
+
         const { error } = await supabaseAdmin.from("payments").insert({
           stripe_charge_id: paymentIntent.latest_charge,
           user_id: userId,
