@@ -11,16 +11,105 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Star,
   MapPin,
-  DoorOpen,
-  WavesLadder,
-  Flower2,
-  Mountain,
-  CircleParking,
+  Wifi,
+  Car,
+  Waves,
+  Wind,
   Utensils,
+  Tv,
+  Dog,
+  Key,
+  Sparkles,
+  Dumbbell,
+  WashingMachine,
+  Monitor,
+  Coffee,
+  ChefHat,
+  Flower2,
+  Bike,
+  Umbrella,
+  Mountain,
+  Building2,
+  Landmark,
+  Trees,
+  Leaf,
+  Sun,
+  DoorOpen,
+  Ship,
+  CigaretteOff,
+  PartyPopper,
+  Clock,
+  Ban,
 } from "lucide-react";
 import Footer from "@/components/Footer";
+
+const AMENITY_ICONS = {
+  // Essentials
+  wifi: Wifi,
+  "air conditioning": Wind,
+  ac: Wind,
+  kitchen: Utensils,
+  parking: Car,
+  "free parking": Car,
+  workspace: Monitor,
+  tv: Tv,
+  washer: WashingMachine,
+
+  // Facilities
+  pool: Waves,
+  "swimming pool": Waves,
+  "gym access": Dumbbell,
+  gym: Dumbbell,
+  garden: Flower2,
+  balcony: DoorOpen,
+  "historic building": Landmark,
+  elevator: Building2,
+
+  // Food & Service
+  breakfast: Coffee,
+  "chef service": ChefHat,
+  "cleaning service": Sparkles,
+
+  // Views
+  "sea view": Waves,
+  "river view": Ship,
+  "mountain view": Mountain,
+  "city view": Building2,
+  "temple view": Landmark,
+  "nature view": Trees,
+  "valley view": Leaf,
+  "garden view": Flower2,
+
+  // Activities / Location
+  "beach access": Umbrella,
+  hiking: Mountain,
+  bicycle: Bike,
+  "farm tour": Trees,
+  "central location": MapPin,
+
+  // Atmosphere / Permissions
+  "pet friendly": Dog,
+  pets: Dog,
+  "self check-in": Key,
+  "eco-friendly": Leaf,
+  peaceful: Sun,
+
+  // RULES / RESTRICTIONS
+  "no smoking": CigaretteOff,
+  "smoke free": CigaretteOff,
+  "no parties": PartyPopper,
+  "no events": PartyPopper,
+  "check-in": Clock,
+  "check-out": Clock,
+  "quiet hours": Clock,
+  "no pets": Ban,
+};
+
+const getAmenityIcon = (amenityName) => {
+  const normalized = amenityName?.toLowerCase().trim();
+  return AMENITY_ICONS[normalized] || Sparkles;
+};
 
 const PROVINCE_MAP = {
   1: "Phnom Penh",
@@ -33,17 +122,14 @@ const PROVINCE_MAP = {
 export default function PropertyDetailsPage({ params }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { profile, loading: authLoading } = useAuth();
+  const { profile } = useAuth();
 
-  // State for the property data
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Booking State
   const [date, setDate] = useState({ from: undefined, to: undefined });
   const [guests, setGuests] = useState(1);
 
-  // --- 1. FETCH REAL DATA ON MOUNT ---
+  // --- 1. FETCH DATA ---
   useEffect(() => {
     if (!resolvedParams.id) return;
 
@@ -94,6 +180,45 @@ export default function PropertyDetailsPage({ params }) {
     });
   };
 
+  const getImages = () => {
+    if (property.image_urls && property.image_urls.length > 0) {
+      return property.image_urls;
+    }
+    return ["/beachvilla.jpg"];
+  };
+
+  const displayImages = getImages();
+
+  const fullList = property.amenities || [];
+
+  // Keywords that identify a "Rule"
+  const RULE_KEYWORDS = [
+    "no ",
+    "check-in",
+    "check-out",
+    "quiet",
+    "party",
+    "events",
+    "smoke free",
+  ];
+
+  // Filter Logic
+  const rulesList = fullList.filter((item) =>
+    RULE_KEYWORDS.some((keyword) => item.toLowerCase().includes(keyword))
+  );
+
+  // Everything else is an Amenity
+  const amenitiesList = fullList.filter((item) => !rulesList.includes(item));
+
+  // Logic to find "Highlights" for the top section
+  const checkAmenity = (keyword) =>
+    fullList.some((a) => a.toLowerCase().includes(keyword));
+  const hasSelfCheckIn = checkAmenity("self check");
+  const hasPets = checkAmenity("pet") && !checkAmenity("no pet"); // Ensure it's not "No pets"
+  const hasPool = checkAmenity("pool");
+  const hasBeach = checkAmenity("beach");
+  const hasBreakfast = checkAmenity("breakfast");
+
   const handleBookClick = () => {
     if (!date?.from || !date?.to) {
       alert("Please select check-in and check-out dates");
@@ -108,7 +233,7 @@ export default function PropertyDetailsPage({ params }) {
         properties_id: property.properties_id,
         title: property.title,
         location: property.provinces?.name || "Cambodia",
-        image: property.image_urls?.[0] || "/placeholder.jpg",
+        image: displayImages[0],
         host: property.host_name || "Host",
         pricePerNight: property.price_per_night,
       },
@@ -125,8 +250,6 @@ export default function PropertyDetailsPage({ params }) {
     sessionStorage.setItem("bookingData", JSON.stringify(bookingData));
     router.push("/checkout?step=confirm-and-pay");
   };
-
-  const mainImage = property.image_urls?.[0] || "/beachvilla.jpg";
 
   return (
     <div className="min-h-screen bg-white">
@@ -145,16 +268,42 @@ export default function PropertyDetailsPage({ params }) {
         </div>
 
         {/* Image Grid - Using fallback if array is missing */}
-        <div className="h-[500px] rounded-xl overflow-hidden mb-8 relative">
-          <Image
-            src={property.image_url || "/beachvilla.jpg"}
-            alt={property.title}
-            fill
-            className="object-cover"
-          />
-        </div>
+        {displayImages.length >= 5 ? (
+          <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[400px] md:h-[500px] rounded-2xl overflow-hidden mb-8">
+            {/* Main Large Image (First item) */}
+            <div className="col-span-2 row-span-2 relative group cursor-pointer">
+              <Image
+                src={displayImages[0]}
+                alt="Property Main"
+                fill
+                className="object-cover group-hover:brightness-90 transition"
+              />
+            </div>
+            {/* Secondary Images (Next 4 items) */}
+            {displayImages.slice(1, 5).map((img, index) => (
+              <div key={index} className="relative group cursor-pointer">
+                <Image
+                  src={img}
+                  alt={`Property detail ${index + 1}`}
+                  fill
+                  className="object-cover group-hover:brightness-90 transition"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Fallback: If fewer than 5 images, just show one big Hero image
+          <div className="h-[400px] md:h-[500px] w-full rounded-2xl overflow-hidden mb-8 relative">
+            <Image
+              src={displayImages[0]}
+              alt={property.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+        )}
 
-        <div className="grid grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="col-span-2">
             <div className="border-b pb-6 mb-6">
               <h2 className="text-2xl font-semibold mb-2">
@@ -164,12 +313,120 @@ export default function PropertyDetailsPage({ params }) {
                 {property.max_guests} guests · {property.num_bedrooms} bedrooms
               </p>
             </div>
+
+            <div className="border-b pb-6 mb-6 space-y-6">
+              {/* Priority */}
+              {hasSelfCheckIn && (
+                <div className="flex gap-4">
+                  <Key className="text-gray-800 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold">Self check-in</h3>
+                    <p className="text-gray-500 text-sm">
+                      Check yourself in with the keypad.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {hasPool ? (
+                <div className="flex gap-4">
+                  <Waves className="text-gray-800 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold">Dive right in</h3>
+                    <p className="text-gray-500 text-sm">
+                      This is one of the few places in the area with a pool.
+                    </p>
+                  </div>
+                </div>
+              ) : hasBeach ? (
+                <div className="flex gap-4">
+                  <Umbrella className="text-gray-800 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold">Right next to the beach</h3>
+                    <p className="text-gray-500 text-sm">
+                      Guests love being this close to the water.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {hasBreakfast ? (
+                <div className="flex gap-4">
+                  <Coffee className="text-gray-800 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold">Breakfast included</h3>
+                    <p className="text-gray-500 text-sm">
+                      Start your day with a complimentary meal.
+                    </p>
+                  </div>
+                </div>
+              ) : hasPets ? (
+                <div className="flex gap-4">
+                  <Dog className="text-gray-800 mt-1" size={24} />
+                  <div>
+                    <h3 className="font-semibold">Pet Friendly</h3>
+                    <p className="text-gray-500 text-sm">
+                      Bring your pets along for the stay.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Description */}
             <div className="border-b pb-6 mb-6">
-              <h3 className="font-bold">Description</h3>
-              <p className="text-gray-700 leading-relaxed">
+              <h3 className="font-bold text-xl mb-4">About this place</h3>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                 {property.description}
               </p>
             </div>
+
+            {/* --- AMENITIES SECTION --- */}
+            {amenitiesList.length > 0 && (
+              <div className="border-b pb-6 mb-6">
+                <h3 className="font-bold text-xl mb-6">
+                  What this place offers
+                </h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                  {amenitiesList.map((amenity, index) => {
+                    const IconComponent = getAmenityIcon(amenity);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 text-gray-700"
+                      >
+                        <IconComponent size={24} strokeWidth={1.5} />
+                        <span className="capitalize">{amenity}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* --- RULES LIST --- */}
+            {rulesList.length > 0 && (
+              <div className="pb-6 mb-6">
+                <h3 className="font-bold text-xl mb-6">House Rules</h3>
+                <div className="space-y-4">
+                  {rulesList.map((rule, index) => {
+                    const IconComponent = getAmenityIcon(rule);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3 text-gray-800"
+                      >
+                        <IconComponent
+                          size={24}
+                          strokeWidth={1.5}
+                          className="text-gray-600"
+                        />
+                        <span className="capitalize font-medium">{rule}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Booking Widget */}
