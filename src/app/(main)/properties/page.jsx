@@ -45,6 +45,24 @@ export default function Properties() {
     );
   };
 
+  const groupedByProvince = filteredListings.reduce((acc, property) => {
+    const provinceName = property.provinces?.name || "Unknown";
+    const provinceId = property.province_id;
+    if (!acc[provinceName]) {
+      acc[provinceName] = {
+        id: provinceId,
+        properties: [],
+      };
+    }
+    acc[provinceName].properties.push(property);
+    return acc;
+  }, {});
+
+  // Sort provinces by ID
+  const sortedProvinces = Object.entries(groupedByProvince).sort(
+    ([, a], [, b]) => a.id - b.id
+  );
+
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 
   return (
@@ -63,25 +81,31 @@ export default function Properties() {
             </p>
           </section>
           <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <div className="flex justify-between">
-              <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit mb-4">
-                Phnom Penh
-              </h2>
-              <button
-                onClick={() => setShowMap(true)}
-                className="bg-black rounded-full text-white font-bold py-2 px-3 w-fit mb-4"
-              >
-                View in map
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {filteredListings.map((property) => (
-                <PropertyCard
-                  key={property.properties_id}
-                  property={property}
-                />
-              ))}
-            </div>
+            {sortedProvinces.map(([provinceName, { properties }], index) => (
+              <div key={provinceName} className="mb-12">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit">
+                    {provinceName}
+                  </h2>
+                  {index === 0 && (
+                    <button
+                      onClick={() => setShowMap(true)}
+                      className="bg-black rounded-full text-white font-bold py-2 px-3"
+                    >
+                      View in map
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                  {properties.map((property) => (
+                    <PropertyCard
+                      key={property.properties_id}
+                      property={property}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
           <Footer />
         </>
