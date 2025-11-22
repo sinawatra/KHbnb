@@ -54,30 +54,62 @@ export async function GET(request) {
     .order("created_at", { ascending: false })
     .limit(5);
 
+  // Query 3: Get the total booking volume from confirmed bookings
+  const totalBookingVolumeQuery = adminClient
+    .from("bookings")
+    .select("total_price")
+    .eq("status", "confirmed");
+
+  // Query 4: Get the total number of guests
+  const totalGuestsQuery = adminClient.from("bookings").select("num_guests");
+
+  // Query 5: Get platform service fee revenue
+  const platformRevenueQuery = adminClient.from("payments").select("amount");
+
   // Run both queries at the same time
-  const [bookingsResult, propertiesResult] = await Promise.all([
+  const [
+    bookingsResult,
+    propertiesResult,
+    bookingVolumeResult,
+    guestsResult,
+    revenueResult,
+  ] = await Promise.all([
     recentBookingsQuery,
     recentPropertiesQuery,
+    totalBookingVolumeQuery,
+    totalGuestsQuery,
+    platformRevenueQuery,
   ]);
 
-  // 3. Handle Errors
-  if (bookingsResult.error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "error",
-        data: { details: bookingsResult.error.message },
-      },
-      { status: 500 }
-    );
-  }
+  const totalBookingVolume =
+    bookingVolumeResult.data?.reduce(
+      (sum, b) => sum + (b.total_price || 0),
+      0
+    ) || 0;
+  const totalGuests =
+    guestsResult.data?.reduce((sum, b) => sum + (b.num_guests || 0), 0) || 0;
+  const totalRevenue =
+    revenueResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
 
-  if (propertiesResult.error) {
+  // 3. Handle Errors
+  if (
+    bookingsResult.error ||
+    propertiesResult.error ||
+    bookingVolumeResult.error ||
+    guestsResult.error ||
+    revenueResult.error
+  ) {
+    const error =
+      bookingsResult.error ||
+      propertiesResult.error ||
+      bookingVolumeResult.error ||
+      guestsResult.error ||
+      revenueResult.error;
     return NextResponse.json(
       {
         success: false,
         message: "error",
-        data: { details: propertiesResult.error.message },
+        data: { details: error.message },
       },
       { status: 500 }
     );
@@ -90,6 +122,9 @@ export async function GET(request) {
     data: {
       recentBookings: bookingsResult.data,
       recentProperties: propertiesResult.data,
+      totalBookingVolume,
+      totalGuests,
+      totalRevenue,
     },
   });
 }
