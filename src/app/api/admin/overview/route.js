@@ -142,13 +142,13 @@ export async function GET(request) {
     success: true,
     message: "Overview data retrieved successfully",
     data: {
-      recentBookings: bookingsResult.data,
-      recentProperties: propertiesResult.data,
       totalBookingVolume,
       totalGuests,
       totalRevenue,
       totalBookings,
       totalProperties,
+      recentBookings: bookingsResult.data,
+      recentProperties: propertiesResult.data,
     },
   });
 }
