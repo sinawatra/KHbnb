@@ -34,7 +34,7 @@ function PropertiesContent() {
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
-        console.log("🔍 API Response:", data);
+        console.log("API Response:", data);
         if (data.success) {
           const validProperties = data.data.map((p) => ({
             ...p,
@@ -95,7 +95,7 @@ function PropertiesContent() {
               Handpicked stays for your next adventure
             </p>
           </section>
-          <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             {sortedProvinces.map(([provinceName, { properties }], index) => (
               <div key={provinceName} className="mb-12">
                 <div className="flex justify-between items-center mb-4">

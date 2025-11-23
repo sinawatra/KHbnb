@@ -24,6 +24,7 @@ export async function POST(request) {
       check_out_date,
       num_guests,
       total_price,
+      platform_revenue,
       billing_address_line1,
       billing_city,
       billing_country,
@@ -38,11 +39,12 @@ export async function POST(request) {
       .from("bookings")
       .insert({
         user_id: session.user.id,
-        property_id, // This was failing because it was null
+        property_id,
         check_in_date,
         check_out_date,
         num_guests,
         total_price,
+        platform_revenue,
         status: "pending",
         billing_address_line1,
         billing_city,
