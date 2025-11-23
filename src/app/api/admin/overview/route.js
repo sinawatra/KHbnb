@@ -69,6 +69,12 @@ export async function GET(request) {
     .select("platform_revenue")
     .eq("status", "confirmed");
 
+  // Query 6: Get total bookings
+  const totalBookingQuery = adminClient.from("bookings").select("*");
+
+  // Query 7: Get total properties
+  const totalPropertiesQuery = adminClient.from("properties").select("*");
+
   // Run both queries at the same time
   const [
     bookingsResult,
@@ -76,12 +82,16 @@ export async function GET(request) {
     bookingVolumeResult,
     guestsResult,
     revenueResult,
+    totalBookingsResult,
+    totalPropertiesResult,
   ] = await Promise.all([
     recentBookingsQuery,
     recentPropertiesQuery,
     totalBookingVolumeQuery,
     totalGuestsQuery,
     platformRevenueQuery,
+    totalBookingQuery,
+    totalPropertiesQuery,
   ]);
 
   const totalBookingVolume =
@@ -96,6 +106,8 @@ export async function GET(request) {
       (sum, b) => sum + (b.platform_revenue || 0),
       0
     ) || 0;
+  const totalBookings = totalBookingsResult.data?.length || 0;
+  const totalProperties = totalPropertiesResult.data?.length || 0;
 
   // 3. Handle Errors
   if (
@@ -103,14 +115,18 @@ export async function GET(request) {
     propertiesResult.error ||
     bookingVolumeResult.error ||
     guestsResult.error ||
-    revenueResult.error
+    revenueResult.error ||
+    totalBookingsResult.error ||
+    totalPropertiesResult.error
   ) {
     const error =
       bookingsResult.error ||
       propertiesResult.error ||
       bookingVolumeResult.error ||
       guestsResult.error ||
-      revenueResult.error;
+      revenueResult.error ||
+      totalBookingsResult.error ||
+      totalPropertiesResult.error;
     return NextResponse.json(
       {
         success: false,
@@ -131,6 +147,8 @@ export async function GET(request) {
       totalBookingVolume,
       totalGuests,
       totalRevenue,
+      totalBookings,
+      totalProperties,
     },
   });
 }
