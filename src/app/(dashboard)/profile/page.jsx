@@ -148,9 +148,6 @@ export default function ProfilePage() {
       <h3 className="text-[#00000080] font-semibold">Email</h3>
       <p className="font-medium mb-6">{profile.email}</p>
 
-      <h3 className="text-[#00000080] font-semibold">Password</h3>
-      <p className="font-medium mb-6">Reset password</p>
-
       <h3 className="text-[#00000080] font-semibold">Country</h3>
       <div className="flex gap-10 mb-6">
         <p className="font-medium">Cambodia</p>
@@ -161,7 +158,6 @@ export default function ProfilePage() {
         <p className="font-medium">
           {profile.phone_number ? profile.phone_number : "Enter Phone Number"}
         </p>
-        <button className="font-bold mr-10 hover:cursor-pointer">Edit</button>
       </div>
 
       <div className="flex pt-4 border-t mt-4">

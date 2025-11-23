@@ -41,6 +41,7 @@ import {
   PartyPopper,
   Clock,
   Ban,
+  ImageOff,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 
@@ -183,9 +184,14 @@ export default function PropertyDetailsPage({ params }) {
 
   const getImages = () => {
     if (property.image_urls && property.image_urls.length > 0) {
-      return property.image_urls;
+      // Filter out blob URLs and invalid URLs
+      const validImages = property.image_urls.filter((url) => {
+        if (!url || typeof url !== "string") return false;
+        return url.startsWith("https://") && url.includes("supabase");
+      });
+      return validImages.length > 0 ? validImages : [];
     }
-    return ["/beachvilla.jpg"];
+    return [];
   };
 
   const displayImages = getImages();
@@ -271,37 +277,86 @@ export default function PropertyDetailsPage({ params }) {
 
         {/* Image Grid - Using fallback if array is missing */}
         {displayImages.length >= 5 ? (
+          // 5+ images: Show grid layout
           <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[400px] md:h-[500px] rounded-2xl overflow-hidden mb-8">
-            {/* Main Large Image (First item) */}
-            <div className="col-span-2 row-span-2 relative group cursor-pointer">
-              <Image
-                src={displayImages[0]}
-                alt="Property Main"
-                fill
-                className="object-cover group-hover:brightness-90 transition"
-              />
-            </div>
-            {/* Secondary Images (Next 4 items) */}
-            {displayImages.slice(1, 5).map((img, index) => (
-              <div key={index} className="relative group cursor-pointer">
+            <div className="col-span-2 row-span-2 relative group cursor-pointer bg-gray-100">
+              {displayImages[0] ? (
                 <Image
-                  src={img}
-                  alt={`Property detail ${index + 1}`}
+                  src={displayImages[0]}
+                  alt="Property Main"
                   fill
-                  className="object-cover group-hover:brightness-90 transition"
+                 className="object-cover object-center group-hover:brightness-90 transition"
                 />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <ImageOff size={64} className="text-gray-300" />
+                </div>
+              )}
+            </div>
+            {displayImages.slice(1, 5).map((img, index) => (
+              <div
+                key={index}
+                className="relative group cursor-pointer bg-gray-100"
+              >
+                {img ? (
+                  <Image
+                    src={img}
+                    alt={`Property detail ${index + 1}`}
+                    fill
+                    className="object-cover object-center group-hover:brightness-90 transition"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ImageOff size={48} className="text-gray-300" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        ) : (
-          // Fallback: If fewer than 5 images, just show one big Hero image
-          <div className="h-[400px] md:h-[500px] w-full rounded-2xl overflow-hidden mb-8 relative">
+        ) : displayImages.length > 1 ? (
+          // 2-4 images: Show simplified grid
+          <div
+            className={`grid gap-3 h-[400px] md:h-[500px] rounded-2xl overflow-hidden mb-8 ${
+              displayImages.length === 2
+                ? "grid-cols-2"
+                : "grid-cols-2 grid-rows-2"
+            }`}
+          >
+            {displayImages.slice(0, 4).map((img, index) => (
+              <div
+                key={index}
+                className="relative group cursor-pointer bg-gray-100 overflow-hidden"
+              >
+                {img ? (
+                  <Image
+                    src={img}
+                    alt={`Property ${index + 1}`}
+                    fill
+                    className="object-cover object-center group-hover:brightness-90 transition"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ImageOff size={64} className="text-gray-300" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : displayImages.length === 1 ? (
+          // 1 image: Show single hero image
+          <div className="h-[400px] md:h-[500px] w-full rounded-2xl overflow-hidden mb-8 relative bg-gray-100">
             <Image
               src={displayImages[0]}
               alt={property.title}
               fill
               className="object-cover"
             />
+          </div>
+        ) : (
+          // 0 images: Show placeholder
+          <div className="h-[400px] md:h-[500px] w-full rounded-2xl overflow-hidden mb-8 relative bg-gray-100 flex flex-col items-center justify-center">
+            <ImageOff size={80} className="text-gray-300" />
+            <p className="text-gray-500 mt-4">No image available</p>
           </div>
         )}
 

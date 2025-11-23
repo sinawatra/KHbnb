@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Loader2 } from "lucide-react";
+import { Calendar, Users, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
 const FALLBACK_IMAGE = "/beachvilla.jpg";
 
-export default function BookingCard({ booking }) {
+export default function BookingCard({ booking, isPremium }) {
   const [isCancelling, setIsCancelling] = useState(false);
 
   const isValidUrl = (s) => {
@@ -75,11 +75,13 @@ export default function BookingCard({ booking }) {
     <div className="mt-6 bg-white p-6 rounded-lg shadow-md flex flex-col md:flex-row gap-6">
       {/* Image Container - Fixed sizing issues */}
       <div className="relative w-full md:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200">
-        <img
+        <Image
           src={imgSrc}
           alt={booking.title || "Property Image"}
-          className="object-cover w-full h-full"
+          className="object-cover"
           onError={() => setImgSrc(FALLBACK_IMAGE)}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
         />
       </div>
 
@@ -140,24 +142,45 @@ export default function BookingCard({ booking }) {
                 View Property
               </Button>
             </Link>
-
-            {(booking.status === "pending" ||
-              booking.status === "confirmed") && (
-              <Button
-                variant="destructive"
-                onClick={handleCancelBooking}
-                disabled={isCancelling}
-              >
-                {isCancelling ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cancelling...
-                  </>
-                ) : (
-                  "Cancel Booking"
-                )}
-              </Button>
-            )}
+            {(booking.status === "pending" || booking.status === "confirmed") &&
+              (isPremium ? (
+                // Premium: Full cancel functionality
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelBooking}
+                  disabled={isCancelling}
+                >
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    "Cancel Booking"
+                  )}
+                </Button>
+              ) : (
+                // Free: Show button but redirect to upgrade
+                <Button
+                  variant="outline"
+                  className="border-red-600 text-red-600 hover:bg-red-50 relative"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Cancelling bookings is a premium feature. Upgrade to cancel this booking?"
+                      )
+                    ) {
+                      window.location.href = "/subscription";
+                    }
+                  }}
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Cancel Booking
+                  <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                    Premium
+                  </span>
+                </Button>
+              ))}
           </div>
         </div>
       </div>

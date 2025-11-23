@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ListFilterPlus, X, Plus, Minus } from "lucide-react";
 import PropertyCard from "@/components/PropertyCard";
@@ -18,46 +18,70 @@ function PropertiesContent() {
   const [showMap, setShowMap] = useState(false);
   const [zoom, setZoom] = useState(12);
   const [loading, setLoading] = useState(true);
+  const [appliedFilters, setAppliedFilters] = useState({});
 
+  // Fetch properties function
+  const fetchProperties = useCallback(
+    (filters = {}) => {
+      setLoading(true);
+
+      const province = searchParams.get("province");
+      const guests = searchParams.get("guests");
+
+      const params = new URLSearchParams();
+      if (province) params.append("province", province);
+      if (guests) params.append("guests", guests);
+
+      // Add filter params
+      if (filters.minPrice) params.append("minPrice", filters.minPrice);
+      if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
+      if (filters.beds && filters.beds !== "any")
+        params.append("beds", filters.beds);
+      if (filters.amenities && filters.amenities.length > 0) {
+        params.append("amenities", JSON.stringify(filters.amenities));
+      }
+
+      const url = `/api/properties${
+        params.toString() ? `?${params.toString()}` : ""
+      }`;
+
+      fetch(url)
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("API Response:", data);
+          if (data.success) {
+            const validProperties = data.data.map((p) => ({
+              ...p,
+              latitude: Number(p.latitude),
+              longitude: Number(p.longitude),
+            }));
+            console.log("First property:", validProperties[0]);
+            setFilteredListings(validProperties);
+          } else {
+            // Handle errors (e.g., premium required)
+            alert(data.data?.details || "Failed to load properties");
+            setFilteredListings([]);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          alert("Error loading properties");
+        })
+        .finally(() => setLoading(false));
+    },
+    [searchParams]
+  );
+
+  // Initial load
   useEffect(() => {
-    const province = searchParams.get("province");
-    const guests = searchParams.get("guests");
+    fetchProperties(appliedFilters);
+  }, [fetchProperties, appliedFilters]);
 
-    const params = new URLSearchParams();
-    if (province) params.append("province", province);
-    if (guests) params.append("guests", guests);
-
-    const url = `/api/properties${
-      params.toString() ? `?${params.toString()}` : ""
-    }`;
-
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("API Response:", data);
-        if (data.success) {
-          const validProperties = data.data.map((p) => ({
-            ...p,
-            latitude: Number(p.latitude),
-            longitude: Number(p.longitude),
-          }));
-
-          console.log("First property:", validProperties[0]);
-          setFilteredListings(validProperties);
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, [searchParams]);
-
+  // Handle filter application
   const handleApplyFilters = (filters) => {
-    setFilteredListings((prev) =>
-      prev.filter(
-        (p) =>
-          p.price_per_night >= filters.minPrice &&
-          p.price_per_night <= filters.maxPrice
-      )
-    );
+    console.log("Applying filters:", filters);
+    setAppliedFilters(filters);
+    fetchProperties(filters);
   };
 
   const groupedByProvince = filteredListings.reduce((acc, property) => {
@@ -78,6 +102,17 @@ function PropertiesContent() {
     ([, a], [, b]) => a.id - b.id
   );
 
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (appliedFilters.minPrice > 0) count++;
+    if (appliedFilters.maxPrice < 500) count++;
+    if (appliedFilters.beds && appliedFilters.beds !== "any") count++;
+    if (appliedFilters.amenities && appliedFilters.amenities.length > 0) {
+      count += appliedFilters.amenities.length;
+    }
+    return count;
+  };
+
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 
   return (
@@ -88,44 +123,56 @@ function PropertiesContent() {
           <section className="p-6 flex flex-col gap-6">
             <div className="flex justify-center gap-6">
               <Searchbar />
-              <Filter onApplyFilters={handleApplyFilters} />
+              <Filter
+                onApplyFilters={handleApplyFilters}
+                currentFilters={appliedFilters}
+                activeCount={getActiveFilterCount()}
+              />
             </div>
             <h1 className="font-bold text-2xl self-center">All Properties</h1>
             <p className="font-semibold text-gray-500 self-center">
               Handpicked stays for your next adventure
             </p>
           </section>
-          <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            {sortedProvinces.map(([provinceName, { properties }], index) => (
-              <div key={provinceName} className="mb-12">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit">
-                    {provinceName}
-                  </h2>
-                  {index === 0 && (
-                    <button
-                      onClick={() => setShowMap(true)}
-                      className="bg-black rounded-full text-white font-bold py-2 px-3"
-                    >
-                      View in map
-                    </button>
-                  )}
+
+          {filteredListings.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">
+                No properties found matching your filters
+              </p>
+            </div>
+          ) : (
+            <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              {sortedProvinces.map(([provinceName, { properties }], index) => (
+                <div key={provinceName} className="mb-12">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit">
+                      {provinceName}
+                    </h2>
+                    {index === 0 && (
+                      <button
+                        onClick={() => setShowMap(true)}
+                        className="bg-black rounded-full text-white font-bold py-2 px-3"
+                      >
+                        View in map
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                    {properties.map((property) => (
+                      <PropertyCard
+                        key={property.properties_id}
+                        property={property}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                  {properties.map((property) => (
-                    <PropertyCard
-                      key={property.properties_id}
-                      property={property}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
+              ))}
+            </section>
+          )}
           <Footer />
         </>
       )}
-
       {/* Map View */}
       {showMap && (
         <div className="fixed inset-0 z-50 bg-white">
@@ -165,19 +212,20 @@ function PropertiesContent() {
                   ))}
               </Map>
             </div>
-
             {selectedProperty && (
               <MapPropertyCard
                 property={selectedProperty}
                 onClose={() => setSelectedProperty(null)}
               />
             )}
-
             <div className="absolute top-6 z-10 w-full flex justify-center gap-4 px-6">
               <Searchbar />
-              <Filter onApplyFilters={handleApplyFilters} />
+              <Filter
+                onApplyFilters={handleApplyFilters}
+                currentFilters={appliedFilters}
+                activeCount={getActiveFilterCount()}
+              />
             </div>
-
             {/* Close button */}
             <button
               onClick={() => setShowMap(false)}
@@ -185,7 +233,6 @@ function PropertiesContent() {
             >
               <X className="w-5 h-5" />
             </button>
-
             {/* Zoom controls */}
             <div className="absolute top-16 right-4 z-20 flex flex-col gap-2">
               <button
