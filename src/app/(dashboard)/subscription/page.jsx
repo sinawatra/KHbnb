@@ -10,6 +10,8 @@ import { Check, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { stripe } from "@/lib/stripe";
 import CancelSubscriptionButton from "@/components/CancelSubscriptionButton";
 
 const freeFeatures = [
@@ -32,30 +34,45 @@ export default async function SubscriptionPage() {
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    return NextResponse.json(
-      { error: { message: "Unauthorized" } },
-      { status: 401 }
-    );
+  if (!user) {
+    return redirect("/login");
   }
 
   let isPro = false;
   let isCanceling = false;
+  let currentPeriodEnd = null;
 
-  if (user) {
-    const { data: subscription } = await supabase
-      .from("user_subscriptions")
-      .select("status")
-      .eq("user_id", user.id)
-      .in("status", ["active", "cancelling"])
-      .single();
+  const { data: profile } = await supabase
+    .from("users")
+    .select("stripe_customer_id")
+    .eq("user_id", user.id)
+    .single();
 
-    if (subscription) {
-      isPro = true;
+  if (profile && profile.stripe_customer_id) {
+    try {
+      const stripeSubscriptions = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status: "all",
+        limit: 1,
+      });
 
-      if (subscription.status === "cancelling") {
-        isCanceling = true;
+      if (stripeSubscriptions.data.length > 0) {
+        const sub = stripeSubscriptions.data[0];
+
+        if (sub.status === "active" || sub.status === "trialing") {
+          isPro = true;
+        }
+
+        if (sub.cancel_at_period_end) {
+          isCanceling = true;
+        }
+
+        currentPeriodEnd = new Date(
+          sub.current_period_end * 1000
+        ).toLocaleDateString();
       }
+    } catch (error) {
+      console.error("Error fetching stripe sub:", error);
     }
   }
 
