@@ -75,7 +75,7 @@ export default function BookingCard({ booking }) {
     <div className="mt-6 bg-white p-6 rounded-lg shadow-md flex flex-col md:flex-row gap-6">
       {/* Image Container - Fixed sizing issues */}
       <div className="relative w-full md:w-48 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200">
-        <img
+        <Image
           src={imgSrc}
           alt={booking.title || "Property Image"}
           className="object-cover w-full h-full"
