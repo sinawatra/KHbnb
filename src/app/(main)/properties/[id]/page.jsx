@@ -166,10 +166,11 @@ export default function PropertyDetailsPage({ params }) {
     );
 
   const nights = calculateNights();
-  const subtotal = nights * property.price_per_night; // Matches DB column
-  const cleaningFee = 20; // Example fixed fee
-  const serviceFee = 30; // Example fixed fee
+  const subtotal = nights * property.price_per_night;
+  const cleaningFee = 20;
+  const serviceFee = Math.round(subtotal * 0.1);
   const total = subtotal + cleaningFee + serviceFee;
+  const platformRevenue = serviceFee;
 
   const formatDate = (dateObj) => {
     if (!dateObj) return "Add date";
@@ -245,6 +246,7 @@ export default function PropertyDetailsPage({ params }) {
       cleaningFee,
       serviceFee,
       total,
+      platformRevenue,
     };
 
     sessionStorage.setItem("bookingData", JSON.stringify(bookingData));

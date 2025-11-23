@@ -64,7 +64,10 @@ export async function GET(request) {
   const totalGuestsQuery = adminClient.from("bookings").select("num_guests");
 
   // Query 5: Get platform service fee revenue
-  const platformRevenueQuery = adminClient.from("payments").select("amount");
+  const platformRevenueQuery = adminClient
+    .from("bookings")
+    .select("platform_revenue")
+    .eq("status", "confirmed");
 
   // Run both queries at the same time
   const [
@@ -89,7 +92,10 @@ export async function GET(request) {
   const totalGuests =
     guestsResult.data?.reduce((sum, b) => sum + (b.num_guests || 0), 0) || 0;
   const totalRevenue =
-    revenueResult.data?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    revenueResult.data?.reduce(
+      (sum, b) => sum + (b.platform_revenue || 0),
+      0
+    ) || 0;
 
   // 3. Handle Errors
   if (
