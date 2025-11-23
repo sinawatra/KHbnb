@@ -10,7 +10,8 @@ async function uploadPropertyImages(supabase, images, propertyId) {
 
   await Promise.all(
     images.map(async (image) => {
-      if (!image || image.size === 0) return;
+      if (!image || image.size === 0 || !(image instanceof File)) return;
+
       const fileName = `${propertyId}/${Date.now()}-${image.name}`;
       const { error } = await supabase.storage
         .from("properties")
@@ -117,8 +118,14 @@ export async function PUT(request, { params }) {
     );
   }
 
-  const formData = await request.formData();
+  // Normalize image_urls to always be an array early
+  const currentImageUrls = Array.isArray(currentProperty.image_urls)
+    ? currentProperty.image_urls
+    : currentProperty.image_urls
+    ? [currentProperty.image_urls]
+    : [];
 
+  const formData = await request.formData();
   const propertyUpdates = {};
 
   if (formData.has("title")) propertyUpdates.title = formData.get("title");
@@ -163,7 +170,6 @@ export async function PUT(request, { params }) {
 
     await deletePropertyImages(authResult.adminClient, imagesToRemove);
 
-    const currentImageUrls = currentProperty.image_urls || [];
     propertyUpdates.image_urls = [
       ...currentImageUrls.filter((url) => !imagesToRemove.includes(url)),
       ...newImageUrls,
