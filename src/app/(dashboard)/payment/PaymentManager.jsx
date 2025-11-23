@@ -134,7 +134,7 @@ export default function PaymentManager() {
               Add Card
             </button>
           </div>
-          <div className="space-y-3 bg-white">
+          <div className="space-y-3 bg-white rounded-lg">
             {savedMethods.length > 0 ? (
               savedMethods.map((method) => (
                 <div
@@ -160,7 +160,7 @@ export default function PaymentManager() {
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 py-4">
+              <p className="text-gray-500 p-4">
                 You have no saved payment methods.
               </p>
             )}

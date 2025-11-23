@@ -68,7 +68,7 @@ const handleSearch = () => {
 
       router.push(`/properties?${params.toString()}`);
     } else {
-      alert("Please select a province before searching.");
+      router.push("/properties");
     }
   };
 

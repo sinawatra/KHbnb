@@ -75,7 +75,7 @@ function PropertiesContent() {
   // Initial load
   useEffect(() => {
     fetchProperties(appliedFilters);
-  }, [searchParams]);
+  }, [fetchProperties, appliedFilters]);
 
   // Handle filter application
   const handleApplyFilters = (filters) => {

@@ -260,7 +260,7 @@ export default function Filter({
                     onChange={(e) =>
                       handlePriceChange(e.target.value, setMinPrice)
                     }
-                    className="pl-7 rounded-full"
+                    className="pl-7 bg-white rounded-full"
                     min="0"
                     max="10000"
                   />
@@ -280,7 +280,7 @@ export default function Filter({
                     onChange={(e) =>
                       handlePriceChange(e.target.value, setMaxPrice)
                     }
-                    className="pl-7 rounded-full"
+                    className="pl-7 bg-white rounded-full"
                     min="0"
                     max="10000"
                   />
@@ -299,7 +299,7 @@ export default function Filter({
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => handleDecrement(setBeds, beds)}
-                  className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-900 transition"
+                  className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:border-gray-900 transition"
                   disabled={beds === 0}
                 >
                   <Minus className="w-4 h-4" />
@@ -309,7 +309,7 @@ export default function Filter({
                 </span>
                 <button
                   onClick={() => handleIncrement(setBeds, beds)}
-                  className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:border-gray-900 transition"
+                  className="w-8 h-8 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:border-gray-900 transition"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -383,7 +383,7 @@ export default function Filter({
             </div>
           </div>
 
-          <div className="border-t pt-6" />
+          <div className="border-t" />
 
           {/* PREMIUM AMENITIES - Compact Lock */}
           <div className="relative">
@@ -392,7 +392,7 @@ export default function Filter({
                 <Lock className="w-8 h-8 text-gray-400 mb-2" />
                 <p className="text-sm font-semibold mb-1">Premium Feature</p>
                 <p className="text-xs text-gray-600 mb-3 text-center">
-                  Filter by Pool, Kitchen & more
+                  Filter by Pool, Kitchen, Gym, Sea View & more
                 </p>
                 <Button
                   size="sm"

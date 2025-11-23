@@ -334,23 +334,147 @@ export default function CheckoutPage() {
       setIsLoading(false);
     }
   };
-
   // --- 5. SUCCESS PAGE ---
   if (step === "success") {
     if (!bookingData) return <div>Loading success page...</div>;
 
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-green-600">
-            Payment Successful!
-          </h1>
-          <button
-            onClick={() => router.push("/")}
-            className="mt-4 text-blue-600 underline"
-          >
-            Return Home
-          </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
+          {/* Success Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-12 h-12 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Success Message */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Booking Confirmed!
+            </h1>
+          </div>
+
+          {/* Booking Details Card */}
+          <div className="border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
+            <h2 className="font-semibold text-lg text-gray-900 border-b pb-3">
+              Booking Details
+            </h2>
+
+            {/* Property Info */}
+            <div className="flex gap-4">
+              {bookingData.property.image && (
+                <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                  <Image
+                    src={bookingData.property.image}
+                    alt={bookingData.property.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {bookingData.property.title}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {bookingData.property.location}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Hosted by {bookingData.property.host}
+                </p>
+              </div>
+            </div>
+
+            {/* Date & Guests */}
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+              <div>
+                <p className="text-sm text-gray-500">Check-in</p>
+                <p className="font-semibold">
+                  {new Date(bookingData.checkIn).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Check-out</p>
+                <p className="font-semibold">
+                  {new Date(bookingData.checkOut).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Guests</p>
+                <p className="font-semibold">
+                  {bookingData.guests} guest{bookingData.guests > 1 ? "s" : ""}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Nights</p>
+                <p className="font-semibold">
+                  {bookingData.nights} night{bookingData.nights > 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="pt-4 border-t space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">
+                  ${bookingData.property.pricePerNight} x {bookingData.nights}{" "}
+                  nights
+                </span>
+                <span className="text-gray-900">${bookingData.subtotal}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Cleaning fee</span>
+                <span className="text-gray-900">
+                  ${bookingData.cleaningFee}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Service fee</span>
+                <span className="text-gray-900">${bookingData.serviceFee}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                <span>Total paid</span>
+                <span className="text-green-600">${bookingData.total}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4">
+            <button
+              onClick={() => router.push("/booking-history")}
+              className="flex-1 bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition"
+            >
+              View My Bookings
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition"
+            >
+              Return Home
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -2,11 +2,27 @@
 
 import { useEffect, useState } from "react";
 import BookingCard from "@/components/BookingCard";
+import { useAuth } from "@/components/contexts/AuthContext";
 
 export default function BookingHistory() {
+  const { user } = useAuth();
+  const [isPremium, setIsPremium] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Check subscription status
+  useEffect(() => {
+    if (user) {
+      fetch("/api/user/subscription-status")
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("Subscription Status:", data);
+          setIsPremium(data.isPremium);
+        })
+        .catch(() => setIsPremium(false));
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -72,7 +88,7 @@ export default function BookingHistory() {
       ) : (
         <div className="space-y-4">
           {bookings.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
+            <BookingCard key={booking.id} booking={booking} isPremium={isPremium}/>
           ))}
         </div>
       )}
