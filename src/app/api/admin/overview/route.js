@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminUser } from "@/lib/auth-helper";
+import { sub } from "date-fns/sub";
 
 export async function GET(request) {
   // 1. Security: Check for admin
@@ -75,6 +76,12 @@ export async function GET(request) {
   // Query 7: Get total properties
   const totalPropertiesQuery = adminClient.from("properties").select("*");
 
+  // Query 8: Subscription revenue
+  const subscriptionRevenueQuery = adminClient
+    .from("payments")
+    .select("amount")
+    .eq("subscription_id", "subscription");
+
   // Run both queries at the same time
   const [
     bookingsResult,
@@ -84,6 +91,7 @@ export async function GET(request) {
     revenueResult,
     totalBookingsResult,
     totalPropertiesResult,
+    totalSubscriptionRevenueResult,
   ] = await Promise.all([
     recentBookingsQuery,
     recentPropertiesQuery,
@@ -92,6 +100,7 @@ export async function GET(request) {
     platformRevenueQuery,
     totalBookingQuery,
     totalPropertiesQuery,
+    subscriptionRevenueQuery,
   ]);
 
   const totalBookingVolume =
@@ -101,13 +110,20 @@ export async function GET(request) {
     ) || 0;
   const totalGuests =
     guestsResult.data?.reduce((sum, b) => sum + (b.num_guests || 0), 0) || 0;
-  const totalRevenue =
+  const totalRev =
     revenueResult.data?.reduce(
       (sum, b) => sum + (b.platform_revenue || 0),
       0
     ) || 0;
   const totalBookings = totalBookingsResult.data?.length || 0;
   const totalProperties = totalPropertiesResult.data?.length || 0;
+  const totalSubscriptionRevenue =
+    totalSubscriptionRevenueResult.data?.reduce(
+      (sum, p) => sum + (p.amount || 0),
+      0
+    ) || 0;
+
+  const totalRevenue = totalRev + totalSubscriptionRevenue;
 
   // 3. Handle Errors
   if (
@@ -117,7 +133,8 @@ export async function GET(request) {
     guestsResult.error ||
     revenueResult.error ||
     totalBookingsResult.error ||
-    totalPropertiesResult.error
+    totalPropertiesResult.error ||
+    totalSubscriptionRevenueResult.error
   ) {
     const error =
       bookingsResult.error ||
@@ -126,7 +143,8 @@ export async function GET(request) {
       guestsResult.error ||
       revenueResult.error ||
       totalBookingsResult.error ||
-      totalPropertiesResult.error;
+      totalPropertiesResult.error ||
+      totalSubscriptionRevenueResult.error;
     return NextResponse.json(
       {
         success: false,
