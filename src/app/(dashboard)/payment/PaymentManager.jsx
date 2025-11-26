@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useCallback } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -8,6 +7,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { Shield } from "lucide-react"; // Optional icon
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -16,10 +16,10 @@ const stripePromise = loadStripe(
 export default function PaymentManager() {
   const [view, setView] = useState("list");
   const [savedMethods, setSavedMethods] = useState([]);
+  const [activePaymentMethodId, setActivePaymentMethodId] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(null);
-
 
   const fetchMethods = useCallback(() => {
     setIsLoading(true);
@@ -33,6 +33,7 @@ export default function PaymentManager() {
       .then((data) => {
         if (data.paymentMethods) {
           setSavedMethods(data.paymentMethods);
+          setActivePaymentMethodId(data.activePaymentMethodId || null);
         } else {
           console.error("API response missing paymentMethods:", data);
           setSavedMethods([]);
@@ -95,17 +96,20 @@ export default function PaymentManager() {
         body: JSON.stringify({ paymentMethodId }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Failed to delete card.");
+        throw new Error(data.error?.message || "Failed to delete card.");
       }
 
-      // On success, update the UI by filtering out the deleted card
       setSavedMethods((currentMethods) =>
         currentMethods.filter((method) => method.id !== paymentMethodId)
       );
+
+      alert("Card removed successfully.");
     } catch (error) {
       console.error(error);
-      alert("Error deleting card. Please try again.");
+      alert(error.message);
     } finally {
       setIsDeleting(null);
     }
@@ -136,29 +140,52 @@ export default function PaymentManager() {
           </div>
           <div className="space-y-3 bg-white rounded-lg">
             {savedMethods.length > 0 ? (
-              savedMethods.map((method) => (
-                <div
-                  key={method.id}
-                  className="p-4 border rounded-lg flex justify-between"
-                >
-                  <div>
-                    <span className="font-medium capitalize">
-                      {method.card.brand}
-                    </span>
-                    <span> •••• {method.card.last4}</span>
-                  </div>
-                  <span className="text-gray-500">
-                    Expires {method.card.exp_month}/{method.card.exp_year}
-                  </span>
-                  <button
-                    onClick={() => handleDeleteCard(method.id)}
-                    disabled={isDeleting === method.id}
-                    className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+              savedMethods.map((method) => {
+                const isActiveCard = method.id === activePaymentMethodId;
+
+                return (
+                  <div
+                    key={method.id}
+                    className={`p-4 border rounded-lg flex justify-between items-center ${
+                      isActiveCard ? "border-green-500 bg-green-50/30" : ""
+                    }`}
                   >
-                    {isDeleting === method.id ? "Deleting..." : "Delete"}
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium capitalize">
+                            {method.card.brand}
+                          </span>
+                          <span> •••• {method.card.last4}</span>
+                          {isActiveCard && (
+                            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
+                              <Shield className="h-3 w-3" />
+                              Active Subscription
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-gray-500 text-sm">
+                          Expires {method.card.exp_month}/{method.card.exp_year}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isActiveCard ? (
+                      <span className="text-xs text-gray-500 italic">
+                        Cannot delete
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleDeleteCard(method.id)}
+                        disabled={isDeleting === method.id}
+                        className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                      >
+                        {isDeleting === method.id ? "Deleting..." : "Delete"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <p className="text-gray-500 p-4">
                 You have no saved payment methods.
@@ -199,8 +226,8 @@ function AddCardForm({ onCancel, onSuccess }) {
     if (!stripe || !elements) {
       return;
     }
-    setIsProcessing(true);
 
+    setIsProcessing(true);
     const { error, setupIntent } = await stripe.confirmSetup({
       elements,
       redirect: "if_required",

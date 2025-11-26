@@ -1,3 +1,4 @@
+// /api/user/subscription-status/route.js
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
@@ -14,6 +15,7 @@ export async function GET(request) {
     } = await supabase.auth.getUser();
 
     if (error || !user) {
+      console.log("No user found");
       return NextResponse.json({ isPremium: false, tier: "free" });
     }
 
@@ -21,7 +23,7 @@ export async function GET(request) {
 
     return NextResponse.json(subscription);
   } catch (err) {
-    console.error(err);
+    console.error("Subscription check error:", err);
     return NextResponse.json({ isPremium: false, tier: "free" });
   }
 }
