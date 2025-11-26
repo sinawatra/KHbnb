@@ -1,55 +1,52 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, CheckCircle2, Circle } from "lucide-react";
+import { Loader2, Plus, CheckCircle2, Circle, CreditCard } from "lucide-react";
+import StripePaymentElementWrapper from "@/components/StripePaymentElementWrapper";
+import StripePaymentForm from "@/components/StripePaymentForm";
 
 const plans = {
   annual: {
     priceId: "price_1SWDo53kW2gspTZHPxa68CMg",
     name: "Annual",
-    price: "$4.00",
-    billing: "Billed as one payment of $50 / yearly",
+    price: "$50",
+    perMonth: "$4",
+    billing: "Billed annually",
     badge: "save 10%",
   },
   monthly: {
     priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
     name: "Monthly",
-    price: "$5.00",
-    billing: "Billed as one payment of $5 / monthly",
+    price: "$5",
+    perMonth: "$5",
+    billing: "Billed monthly",
     badge: null,
   },
 };
 
 export default function BillingPage() {
   const router = useRouter();
-
-  // State for the stepper UI
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState(null);
-
-  // State for payment methods
   const [savedMethods, setSavedMethods] = useState([]);
   const [isFetchingMethods, setIsFetchingMethods] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState("");
-
-  // State for the final API call
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [isLoadingSetupIntent, setIsLoadingSetupIntent] = useState(false);
 
-  // 2. Fetch the user's saved payment methods on load
   useEffect(() => {
     fetch("/api/stripe/get-payment-methods")
       .then((res) => res.json())
       .then((data) => {
         if (data.paymentMethods) {
           setSavedMethods(data.paymentMethods);
-          // Auto-select the first card if it exists
           if (data.paymentMethods.length > 0) {
             setSelectedMethod(data.paymentMethods[0].id);
           }
@@ -62,17 +59,51 @@ export default function BillingPage() {
       });
   }, []);
 
-  // 3. Called when user clicks "Select" on a plan
-  const handlePlanSelect = (plan) => {
-    setSelectedPlan(plan);
-    setStep(2);
-  };
-
   const togglePlan = (plan) => {
     setSelectedPlan(plan);
   };
 
-  // 4. Called when user clicks the final "Confirm and Subscribe" button
+  const handleAddCardClick = async () => {
+    setIsLoadingSetupIntent(true);
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/stripe/add-payment-methods", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error?.message || "Failed to initialize payment.");
+      }
+
+      setClientSecret(data.clientSecret);
+      setShowAddCard(true);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsLoadingSetupIntent(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentMethodId) => {
+    const res = await fetch("/api/stripe/get-payment-methods");
+    const data = await res.json();
+
+    if (data.paymentMethods) {
+      setSavedMethods(data.paymentMethods);
+      setSelectedMethod(paymentMethodId);
+    }
+
+    setShowAddCard(false);
+    setClientSecret(null);
+  };
+
+  const handleCancelAddCard = () => {
+    setShowAddCard(false);
+    setClientSecret(null);
+  };
+
   const handleSubscribe = async () => {
     if (!selectedPlan || !selectedMethod) {
       setErrorMessage("Please select a plan and a payment method.");
@@ -110,7 +141,6 @@ export default function BillingPage() {
         throw new Error(data.error?.message || "Something went wrong.");
       }
 
-      // Success!
       alert("Subscription successful!");
       router.refresh();
       router.push("/subscription");
@@ -119,8 +149,6 @@ export default function BillingPage() {
       setIsLoading(false);
     }
   };
-
-  // --- Render Logic ---
 
   if (isFetchingMethods) {
     return (
@@ -150,12 +178,9 @@ export default function BillingPage() {
             Billing
           </span>
         </div>
-
-        {/* Connector Line */}
         <div
           className={`w-12 h-0.5 ${step >= 2 ? "bg-red-600" : "bg-gray-200"}`}
         />
-
         <div className="flex items-center gap-2">
           <div
             className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
@@ -174,7 +199,7 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* --- STEP 1: CHOOSE PLAN --- */}
+      {/* STEP 1 */}
       {step === 1 && (
         <>
           <div className="text-center mb-10">
@@ -185,7 +210,7 @@ export default function BillingPage() {
           </div>
 
           <div className="space-y-4">
-            {/* Annual Plan Card */}
+            {/* Annual Plan */}
             <div
               onClick={() => togglePlan(plans.annual)}
               className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
@@ -194,51 +219,51 @@ export default function BillingPage() {
                   : "border-gray-200 bg-white hover:border-red-200 hover:shadow-md"
               }`}
             >
-              {/* "Best Value" Label floating top right */}
               <div className="absolute -top-3 right-6">
                 <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                   BEST VALUE
                 </span>
               </div>
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  {/* Radio Indicator */}
                   {selectedPlan?.name === "Annual" ? (
                     <CheckCircle2 className="h-6 w-6 text-red-600" />
                   ) : (
                     <Circle className="h-6 w-6 text-gray-300 group-hover:text-red-300" />
                   )}
-
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-bold text-gray-900">
                         Annual
                       </h2>
-                      {/* Improved Badge Style */}
                       <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded">
                         SAVE 10%
                       </span>
                     </div>
                     <p className="text-gray-500 text-sm mt-1">
-                      Billed as $50 /yearly
+                      {plans.annual.billing}
                     </p>
                   </div>
                 </div>
-
                 <div className="text-right">
+                  <div className="text-gray-400 text-xs line-through mb-1">
+                    $5.00/mo
+                  </div>
                   <span className="text-2xl font-bold text-gray-900">
-                    $4.00
+                    {plans.annual.perMonth}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
                     /mo
                   </span>
+                  <p className="text-gray-600 text-xs mt-1">
+                    {plans.annual.price} per year
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Monthly Plan Card */}
+            {/* Monthly Plan */}
             <div
               onClick={() => togglePlan(plans.monthly)}
               className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
@@ -254,16 +279,16 @@ export default function BillingPage() {
                   ) : (
                     <Circle className="h-6 w-6 text-gray-300 group-hover:text-red-300" />
                   )}
-
                   <div>
                     <h2 className="text-lg font-bold text-gray-900">Monthly</h2>
-                    <p className="text-gray-500 text-sm mt-1">Billed monthly</p>
+                    <p className="text-gray-500 text-sm mt-1">
+                      {plans.monthly.billing}
+                    </p>
                   </div>
                 </div>
-
                 <div className="text-right">
                   <span className="text-2xl font-bold text-gray-900">
-                    $5.00
+                    {plans.monthly.perMonth}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
@@ -274,10 +299,9 @@ export default function BillingPage() {
             </div>
           </div>
 
-          {/* Continue Button */}
           <div className="mt-8 flex justify-end">
             <Button
-              onClick={() => setStep(2)} // Or handle logic
+              onClick={() => setStep(2)}
               disabled={!selectedPlan}
               className="bg-red-600 hover:bg-red-700 text-lg px-8 py-6"
             >
@@ -287,26 +311,28 @@ export default function BillingPage() {
         </>
       )}
 
-      {/* Step 2 : Review and Purchase */}
+      {/* STEP 2 */}
       {step === 2 && (
         <>
           <h1 className="text-3xl font-bold text-center mb-10">
             Review and purchase
           </h1>
+
           <div className="space-y-6">
-            {/* 1. Show selected plan */}
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-2">Selected Plan</h2>
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold">{selectedPlan.name}</h3>
-                    <p className="text-gray-500">{selectedPlan.billing}</p>
+                    <p className="text-gray-500">
+                      {selectedPlan.perMonth}/mo • {selectedPlan.billing}
+                    </p>
+                    <p className="text-gray-900 font-semibold mt-1">
+                      {selectedPlan.price} due today
+                    </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-bold block">
-                      {selectedPlan.price}
-                    </span>
                     <Button
                       variant="link"
                       className="h-auto p-0 text-red-600"
@@ -319,11 +345,11 @@ export default function BillingPage() {
               </CardContent>
             </Card>
 
-            {/* 2. Show payment methods */}
             <Card>
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
-                {savedMethods.length > 0 ? (
+
+                {savedMethods.length > 0 && !showAddCard ? (
                   <>
                     <RadioGroup
                       value={selectedMethod}
@@ -333,7 +359,7 @@ export default function BillingPage() {
                         {savedMethods.map((method) => (
                           <div
                             key={method.id}
-                            className={`flex items-center space-x-2 border p-3 rounded-md transition-colors ${
+                            className={`flex items-center space-x-2 border p-3 rounded-md transition-colors cursor-pointer ${
                               selectedMethod === method.id
                                 ? "border-red-500 bg-red-50"
                                 : "border-gray-200"
@@ -361,48 +387,76 @@ export default function BillingPage() {
                     <Button
                       variant="link"
                       className="p-0 mt-4 text-red-600 flex items-center gap-1"
-                      onClick={() => router.push("/payment")}
+                      onClick={handleAddCardClick}
+                      disabled={isLoadingSetupIntent}
                     >
-                      <Plus className="h-4 w-4" /> Add another card
+                      {isLoadingSetupIntent ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Add another card
                     </Button>
                   </>
+                ) : showAddCard && clientSecret ? (
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <CreditCard className="h-5 w-5 text-gray-600" />
+                      <h3 className="font-semibold">Add New Card</h3>
+                    </div>
+                    <StripePaymentElementWrapper clientSecret={clientSecret}>
+                      <StripePaymentForm
+                        onSuccess={handlePaymentSuccess}
+                        onCancel={handleCancelAddCard}
+                      />
+                    </StripePaymentElementWrapper>
+                  </div>
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-gray-500 mb-4">
                       You have no saved payment methods.
                     </p>
                     <Button
-                      onClick={() => router.push("/payment")}
+                      onClick={handleAddCardClick}
                       variant="outline"
                       className="w-full"
+                      disabled={isLoadingSetupIntent}
                     >
-                      <Plus className="mr-2 h-4 w-4" /> Add Payment Method
+                      {isLoadingSetupIntent ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
+                      Add Payment Method
                     </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* 3. Final action buttons */}
-            <div className="flex justify-between items-center">
-              <Button variant="ghost" onClick={() => setStep(1)}>
-                Back
-              </Button>
-              <Button
-                onClick={handleSubscribe}
-                disabled={isLoading || !selectedMethod}
-                className="bg-red-600 hover:bg-red-700 min-w-[150px]"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                {isLoading ? "Processing..." : "Confirm & Subscribe"}
-              </Button>
-            </div>
-            {errorMessage && (
-              <p className="text-red-500 text-sm mt-4 text-right">
-                {errorMessage}
-              </p>
+            {!showAddCard && (
+              <>
+                <div className="flex justify-between items-center">
+                  <Button variant="ghost" onClick={() => setStep(1)}>
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleSubscribe}
+                    disabled={isLoading || !selectedMethod}
+                    className="bg-red-600 hover:bg-red-700 min-w-[150px]"
+                  >
+                    {isLoading && (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    )}
+                    {isLoading ? "Processing..." : "Confirm & Subscribe"}
+                  </Button>
+                </div>
+                {errorMessage && (
+                  <p className="text-red-500 text-sm mt-4 text-right">
+                    {errorMessage}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </>

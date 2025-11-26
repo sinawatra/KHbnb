@@ -22,6 +22,7 @@ export async function GET() {
       );
     }
 
+    // 3. Get the user's Stripe customer ID
     const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id")
@@ -35,12 +36,42 @@ export async function GET() {
 
     const customerId = profile.stripe_customer_id;
 
+    // 4. Get the user's active subscription (if any)
+    const { data: subscription } = await supabase
+      .from("user_subscriptions")
+      .select("stripe_subscription_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let activePaymentMethodId = null;
+
+    // 5. If user has a subscription, get the active payment method
+    if (subscription && subscription.stripe_subscription_id) {
+      try {
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          subscription.stripe_subscription_id
+        );
+
+        // Only mark as active if subscription is actually active
+        if (stripeSubscription.status === "active") {
+          activePaymentMethodId = stripeSubscription.default_payment_method;
+        }
+      } catch (subError) {
+        console.error("Error fetching subscription:", subError);
+        // Continue without marking any card as active
+      }
+    }
+
+    // 6. Get all payment methods
     const paymentMethods = await stripe.paymentMethods.list({
       customer: customerId,
       type: "card",
     });
 
-    return NextResponse.json({ paymentMethods: paymentMethods.data });
+    return NextResponse.json({
+      paymentMethods: paymentMethods.data,
+      activePaymentMethodId,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: { message: error.message } },
