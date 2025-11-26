@@ -1,8 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import Searchbar from "@/components/Seachbar";
-import FeaturedPropertiesSection from "@/components/FeaturedPropertiesSection";
-import Footer from "@/components/Footer";
+import dynamic from "next/dynamic";
+
+const Searchbar = dynamic(() => import("@/components/Seachbar"), {
+  loading: () => <div className="w-full max-w-5xl h-16 bg-gray-100 rounded-full animate-pulse" />,
+});
+const FeaturedPropertiesSection = dynamic(() => import("@/components/FeaturedPropertiesSection"), {
+  loading: () => <div className="h-96 w-full animate-pulse bg-gray-50" />,
+});
+const Footer = dynamic(() => import("@/components/Footer"));
 
 export default function Home() {
   return (
@@ -27,6 +33,7 @@ export default function Home() {
                       src="/beachvilla.jpg"
                       alt="property front"
                       fill={true}
+                      priority
                       className="object-cover rounded-xl"
                     />
                   </div>
@@ -45,13 +52,13 @@ export default function Home() {
 
             <div className="flex-1 self-center">
               <div className="w-full flex flex-col items-center">
-                <h1 className="font-bold text-[#FFB400] text-4xl mb-4 !text-center w-2/3">
+                <h1 className="font-bold text-amber-600 text-4xl mb-4 !text-center w-2/3">
                   Find Your Perfect Home Away From Home
                 </h1>
-                <h3 className="font-bold text-[#0000004d] text-lg !text-center w-2/3">
+                <p className="font-bold text-gray-600 text-lg !text-center w-2/3">
                   Discover unique properties across Cambodia. From Beachfront,
                   villas to city apartments
-                </h3>
+                </p>
               </div>
             </div>
           </div>
