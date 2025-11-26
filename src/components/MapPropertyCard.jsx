@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 
 export default function MapPropertyCard({ property, onClose }) {
@@ -61,10 +62,12 @@ export default function MapPropertyCard({ property, onClose }) {
         <div className="relative h-48 w-full bg-gray-100">
           {hasValidImages && !imageError ? (
             <>
-              <img
+              <Image
                 src={validImages[currentIndex]}
                 alt={property.title || "Property"}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500"
+                fill
+                sizes="(max-width: 768px) 100vw, 320px"
+                className="object-cover transition-transform duration-500"
                 onError={() => setImageError(true)}
               />
 

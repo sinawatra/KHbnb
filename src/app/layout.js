@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/contexts/AuthContext";
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],
   variable: "--font-nunito-sans",
+  display: "swap", // Prevents render blocking - shows fallback font immediately
 });
 
 export const metadata = {
@@ -22,6 +23,8 @@ export const metadata = {
 export default function RootLayout({children}) {
   return (
     <html lang="en">
+      <head>
+      </head>
       <body className={nunitoSans.className}>
         <AuthProvider>
           {children}

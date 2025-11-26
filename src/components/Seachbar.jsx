@@ -276,6 +276,7 @@ const handleSearch = () => {
       <Button
         className="rounded-full p-3 mr-2 align-center self-center bg-red-600 hover:bg-red-700"
         onClick={handleSearch}
+        aria-label="Search"
       >
         <Search />
       </Button>
