@@ -2,23 +2,35 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getUserSubscription } from "@/lib/permission";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
-  // Get the URL search parameters
+  // 1. Safe Parameter Parsing
   const { searchParams } = new URL(request.url);
   const provinceName = searchParams.get("province");
-  const guests = searchParams.get("guests");
-  const minPrice = searchParams.get("minPrice");
-  const maxPrice = searchParams.get("maxPrice");
+
+  // Parse numeric filters safely
+  const guests = parseInt(searchParams.get("guests")) || 0;
+  const minPrice = parseInt(searchParams.get("minPrice")) || 0;
+  const maxPrice = parseInt(searchParams.get("maxPrice")) || 10000;
   const beds = searchParams.get("beds");
+
+  // Safe JSON parse for amenities
   const amenitiesParam = searchParams.get("amenities");
+  let amenities = [];
+  try {
+    amenities = amenitiesParam ? JSON.parse(amenitiesParam) : [];
+  } catch (e) {
+    console.error("Failed to parse amenities JSON", e);
+    amenities = [];
+  }
 
-  const amenities = amenitiesParam ? JSON.parse(amenitiesParam) : [];
-
+  // 2. Premium Check Logic (Unchanged but cleaned up)
   const FREE_AMENITIES = [
     "no smoking",
     "smoke free",
@@ -30,53 +42,40 @@ export async function GET(request) {
     "parking",
   ];
   const premiumAmenities = amenities.filter((a) => !FREE_AMENITIES.includes(a));
-  // Check if user is trying to use premium filters
+
   if (premiumAmenities.length > 0) {
     try {
       const authHeader = request.headers.get("authorization");
-
       const supabaseAuth = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        {
-          global: {
-            headers: authHeader ? { Authorization: authHeader } : {},
-          },
-        }
+        { global: { headers: authHeader ? { Authorization: authHeader } : {} } }
       );
 
       const {
         data: { user },
       } = await supabaseAuth.auth.getUser();
 
-      if (user) {
-        const subscription = await getUserSubscription(user.id);
-
-        if (!subscription.isPremium) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "error",
-              data: {
-                details:
-                  "Premium subscription required for advanced amenity filters",
-              },
-            },
-            { status: 403 }
-          );
-        }
-      } else {
-        // Not logged in but trying to use premium filters
+      if (!user) {
         return NextResponse.json(
           {
             success: false,
             message: "error",
-            data: {
-              details:
-                "Login and premium subscription required for advanced amenity filters",
-            },
+            data: { details: "Login required for premium filters" },
           },
           { status: 401 }
+        );
+      }
+
+      const subscription = await getUserSubscription(user.id);
+      if (!subscription.isPremium) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "error",
+            data: { details: "Premium subscription required" },
+          },
+          { status: 403 }
         );
       }
     } catch (err) {
@@ -92,61 +91,59 @@ export async function GET(request) {
     }
   }
 
-  // Start building the query
+  // 3. Build Query
   let query = supabase
     .from("properties")
-    .select(
-      `
-      *,
-      provinces!inner ( name )
-    `
-    )
+    .select(`*, provinces!inner(name)`)
     .eq("status", "Active");
 
-  // Add filters if they exist
+  // Filters
   if (provinceName) {
     query = query.eq("provinces.name", provinceName);
   }
 
-  if (guests) {
+  if (guests > 0) {
     query = query.gte("max_guests", guests);
   }
 
-  if (minPrice) {
+  if (minPrice > 0) {
     query = query.gte("price_per_night", minPrice);
   }
 
-  if (maxPrice) {
+  if (maxPrice < 10000 && maxPrice > 0) {
     query = query.lte("price_per_night", maxPrice);
   }
 
   if (beds && beds !== "any") {
-    query = query.gte("num_bedrooms", beds);
+    const bedCount = parseInt(beds);
+    if (!isNaN(bedCount)) {
+      query = query.gte("num_bedrooms", bedCount);
+    }
   }
 
-  // Execute the query
+  // Execute
   const { data: properties, error } = await query;
 
   if (error) {
+    console.error("Query Error:", error);
     return NextResponse.json(
       { success: false, message: "error", data: { details: error.message } },
       { status: 500 }
     );
   }
 
-  // Client-side amenity filtering (Supabase doesn't support array contains all)
+  // 4. Client-side Exact Amenity Match
   let filteredProperties = properties;
 
   if (amenities.length > 0) {
     filteredProperties = properties.filter((property) => {
       const propertyAmenities = property.amenities || [];
+      const normPropAmenities = propertyAmenities.map((a) =>
+        typeof a === "string" ? a.toLowerCase() : a
+      );
 
-      // Check if property has ALL selected amenities
       return amenities.every((selectedAmenity) =>
-        propertyAmenities.some(
-          (propertyAmenity) =>
-            propertyAmenity.toLowerCase() === selectedAmenity.toLowerCase()
-        )
+        normPropAmenities.includes(selectedAmenity.toLowerCase())
       );
     });
   }

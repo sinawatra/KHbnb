@@ -11,12 +11,13 @@ import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import MapPin from "@/components/MapPin";
 import MapPropertyCard from "@/components/MapPropertyCard";
 
+// 1. Define coordinates for major provinces
 const PROVINCE_COORDINATES = {
   "Phnom Penh": { lat: 11.5564, lng: 104.9282, zoom: 12 },
   "Siem Reap": { lat: 13.3633, lng: 103.8564, zoom: 12 },
-  Sihanoukville: { lat: 10.6253, lng: 103.5234, zoom: 12 },
-  Kampot: { lat: 10.6104, lng: 104.1815, zoom: 12 },
-  Kep: { lat: 10.4829, lng: 104.3167, zoom: 13 },
+  "Sihanoukville": { lat: 10.6253, lng: 103.5234, zoom: 12 },
+  "Kampot": { lat: 10.6104, lng: 104.1815, zoom: 12 },
+  "Kep": { lat: 10.4829, lng: 104.3167, zoom: 13 },
 };
 
 function PropertiesContent() {
@@ -24,19 +25,22 @@ function PropertiesContent() {
   const [filteredListings, setFilteredListings] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showMap, setShowMap] = useState(false);
-
+  
+  // 2. Add 'center' state to control map position dynamically
   const [center, setCenter] = useState(PROVINCE_COORDINATES["Phnom Penh"]);
   const [zoom, setZoom] = useState(12);
-
+  
   const [loading, setLoading] = useState(true);
   const [appliedFilters, setAppliedFilters] = useState({});
 
+  // 3. Effect to sync Map Center with Search Params (Province)
   useEffect(() => {
     const provinceParam = searchParams.get("province");
 
     if (provinceParam) {
+      // Case-insensitive lookup
       const provinceKey = Object.keys(PROVINCE_COORDINATES).find(
-        (key) => key.toLowerCase() === provinceParam.toLowerCase()
+        key => key.toLowerCase() === provinceParam.toLowerCase()
       );
 
       if (provinceKey) {
@@ -47,6 +51,7 @@ function PropertiesContent() {
     }
   }, [searchParams]);
 
+  // Fetch properties function
   const fetchProperties = useCallback(
     (filters = {}) => {
       setLoading(true);
@@ -58,6 +63,7 @@ function PropertiesContent() {
       if (province) params.append("province", province);
       if (guests) params.append("guests", guests);
 
+      // Add filter params
       if (filters.minPrice) params.append("minPrice", filters.minPrice);
       if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
       if (filters.beds && filters.beds !== "any")
@@ -83,21 +89,26 @@ function PropertiesContent() {
             console.log("First property:", validProperties[0]);
             setFilteredListings(validProperties);
           } else {
+            // Handle errors (e.g., premium required)
+            // alert(data.data?.details || "Failed to load properties");
             setFilteredListings([]);
           }
         })
         .catch((err) => {
           console.error(err);
+          // alert("Error loading properties");
         })
         .finally(() => setLoading(false));
     },
     [searchParams]
   );
 
+  // Initial load
   useEffect(() => {
     fetchProperties(appliedFilters);
   }, [fetchProperties, appliedFilters]);
 
+  // Handle filter application
   const handleApplyFilters = (filters) => {
     console.log("Applying filters:", filters);
     setAppliedFilters(filters);
@@ -117,6 +128,7 @@ function PropertiesContent() {
     return acc;
   }, {});
 
+  // Sort provinces by ID
   const sortedProvinces = Object.entries(groupedByProvince).sort(
     ([, a], [, b]) => a.id - b.id
   );
@@ -198,10 +210,13 @@ function PropertiesContent() {
           <div className="relative h-screen w-screen overflow-hidden">
             <div className="absolute top-0 left-0 h-full w-full">
               <Map
-                center={center}
+                // 4. Update Map props to use controlled 'center' instead of 'defaultCenter'
+                center={center} 
                 onCenterChanged={(e) => setCenter(e.map.getCenter().toJSON())}
+                
                 zoom={zoom}
                 onZoomChanged={(e) => setZoom(e.map.getZoom())}
+                
                 disableDefaultUI={true}
                 gestureHandling="greedy"
                 mapId="af1b14d4f5d1b9695cb5c9d6"
