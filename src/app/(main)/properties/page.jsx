@@ -10,37 +10,44 @@ import Filter from "@/components/Filter";
 import { APIProvider, Map } from "@vis.gl/react-google-maps";
 import MapPin from "@/components/MapPin";
 import MapPropertyCard from "@/components/MapPropertyCard";
+import { useAuth } from "@/components/contexts/AuthContext";
+import { createClient } from "@supabase/supabase-js";
 
-// 1. Define coordinates for major provinces
+// Define coordinates for major provinces
 const PROVINCE_COORDINATES = {
   "Phnom Penh": { lat: 11.5564, lng: 104.9282, zoom: 12 },
   "Siem Reap": { lat: 13.3633, lng: 103.8564, zoom: 12 },
-  "Sihanoukville": { lat: 10.6253, lng: 103.5234, zoom: 12 },
-  "Kampot": { lat: 10.6104, lng: 104.1815, zoom: 12 },
-  "Kep": { lat: 10.4829, lng: 104.3167, zoom: 13 },
+  Sihanoukville: { lat: 10.6253, lng: 103.5234, zoom: 12 },
+  Kampot: { lat: 10.6104, lng: 104.1815, zoom: 12 },
+  Kep: { lat: 10.4829, lng: 104.3167, zoom: 13 },
 };
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 function PropertiesContent() {
   const searchParams = useSearchParams();
+  const { session } = useAuth(); // Get Session from Context
+
   const [filteredListings, setFilteredListings] = useState([]);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showMap, setShowMap] = useState(false);
-  
-  // 2. Add 'center' state to control map position dynamically
+
   const [center, setCenter] = useState(PROVINCE_COORDINATES["Phnom Penh"]);
   const [zoom, setZoom] = useState(12);
-  
+
   const [loading, setLoading] = useState(true);
   const [appliedFilters, setAppliedFilters] = useState({});
 
-  // 3. Effect to sync Map Center with Search Params (Province)
+  // Effect to sync Map Center with Search Params (Province)
   useEffect(() => {
     const provinceParam = searchParams.get("province");
 
     if (provinceParam) {
-      // Case-insensitive lookup
       const provinceKey = Object.keys(PROVINCE_COORDINATES).find(
-        key => key.toLowerCase() === provinceParam.toLowerCase()
+        (key) => key.toLowerCase() === provinceParam.toLowerCase()
       );
 
       if (provinceKey) {
@@ -53,30 +60,49 @@ function PropertiesContent() {
 
   // Fetch properties function
   const fetchProperties = useCallback(
-    (filters = {}) => {
+    async (filters = {}) => {
       setLoading(true);
-
       const province = searchParams.get("province");
       const guests = searchParams.get("guests");
-
       const params = new URLSearchParams();
+
       if (province) params.append("province", province);
       if (guests) params.append("guests", guests);
-
-      // Add filter params
       if (filters.minPrice) params.append("minPrice", filters.minPrice);
       if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
       if (filters.beds && filters.beds !== "any")
         params.append("beds", filters.beds);
-      if (filters.amenities && filters.amenities.length > 0) {
-        params.append("amenities", JSON.stringify(filters.amenities));
+      if (filters.amenities?.length > 0) {
+        params.append("amenities", filters.amenities.join(","));
       }
 
       const url = `/api/properties${
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      fetch(url)
+      // Use the session token from context first
+      let accessToken = session?.access_token;
+
+      // Fallback: If context is missing session, try fetching it directly
+      if (!accessToken) {
+        const { data } = await supabase.auth.getSession();
+        accessToken = data.session?.access_token;
+      }
+
+      console.log(
+        "Fetch Properties - Access Token:",
+        accessToken ? "Present" : "Missing"
+      );
+
+      fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          // Only attach Authorization if the token exists
+          ...(accessToken && {
+            Authorization: `Bearer ${accessToken}`,
+          }),
+        },
+      })
         .then((res) => res.json())
         .then((data) => {
           console.log("API Response:", data);
@@ -86,21 +112,29 @@ function PropertiesContent() {
               latitude: Number(p.latitude),
               longitude: Number(p.longitude),
             }));
-            console.log("First property:", validProperties[0]);
             setFilteredListings(validProperties);
           } else {
-            // Handle errors (e.g., premium required)
-            // alert(data.data?.details || "Failed to load properties");
+            console.warn("Filter failed:", data.data?.details);
+
+            // UX Fix: Alert user if premium is required
+            if (data.data?.details === "Premium subscription required") {
+              alert("You need a Premium subscription to use these filters.");
+            } else if (
+              data.data?.details === "Login required for premium filters"
+            ) {
+              alert("Please log in to use Premium filters.");
+            }
+
             setFilteredListings([]);
           }
         })
         .catch((err) => {
           console.error(err);
-          // alert("Error loading properties");
         })
         .finally(() => setLoading(false));
     },
-    [searchParams]
+    // Add session to dependency array so it refetches when auth loads
+    [searchParams, session]
   );
 
   // Initial load
@@ -128,7 +162,6 @@ function PropertiesContent() {
     return acc;
   }, {});
 
-  // Sort provinces by ID
   const sortedProvinces = Object.entries(groupedByProvince).sort(
     ([, a], [, b]) => a.id - b.id
   );
@@ -210,13 +243,10 @@ function PropertiesContent() {
           <div className="relative h-screen w-screen overflow-hidden">
             <div className="absolute top-0 left-0 h-full w-full">
               <Map
-                // 4. Update Map props to use controlled 'center' instead of 'defaultCenter'
-                center={center} 
+                center={center}
                 onCenterChanged={(e) => setCenter(e.map.getCenter().toJSON())}
-                
                 zoom={zoom}
                 onZoomChanged={(e) => setZoom(e.map.getZoom())}
-                
                 disableDefaultUI={true}
                 gestureHandling="greedy"
                 mapId="af1b14d4f5d1b9695cb5c9d6"

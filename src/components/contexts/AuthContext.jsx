@@ -14,6 +14,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,14 +41,16 @@ export function AuthProvider({ children }) {
     const initAuth = async () => {
       // Check active session from Supabase (verifies Cookie)
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (user) {
-        setUser(user);
+      if (session?.user) {
+        setUser(session.user);
+        setSession(session);
         await fetchUserProfile();
       } else {
         setUser(null);
+        setSession(null);
         setProfile(null);
       }
       setLoading(false);
@@ -60,12 +63,14 @@ export function AuthProvider({ children }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user);
+        setSession(session);
         if (event === "SIGNED_IN") {
           await fetchUserProfile();
           router.refresh();
         }
       } else {
         setUser(null);
+        setSession(null);
         setProfile(null);
         router.refresh();
       }
@@ -133,6 +138,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
     setProfile(null);
     router.refresh();
     router.push("/");
@@ -142,6 +148,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        session,
         profile,
         login,
         signup,
