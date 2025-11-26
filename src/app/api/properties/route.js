@@ -22,15 +22,10 @@ export async function GET(request) {
 
   // Safe JSON parse for amenities
   const amenitiesParam = searchParams.get("amenities");
-  let amenities = [];
-  try {
-    amenities = amenitiesParam ? JSON.parse(amenitiesParam) : [];
-  } catch (e) {
-    console.error("Failed to parse amenities JSON", e);
-    amenities = [];
-  }
+  // Fix: Handle comma-separated strings instead of JSON.parse
+  const amenities = amenitiesParam ? amenitiesParam.split(",") : [];
 
-  // 2. Premium Check Logic (Unchanged but cleaned up)
+  // 2. Premium Check Logic
   const FREE_AMENITIES = [
     "no smoking",
     "smoke free",
@@ -41,34 +36,63 @@ export async function GET(request) {
     "wifi",
     "parking",
   ];
-  const premiumAmenities = amenities.filter((a) => !FREE_AMENITIES.includes(a));
+
+  // Lowercase comparison to ensure safety
+  const premiumAmenities = amenities.filter(
+    (a) => !FREE_AMENITIES.includes(a.toLowerCase())
+  );
+
+  console.log("--- API Request Debug ---");
+  console.log("Requested Amenities:", amenities);
+  console.log("Detected Premium Amenities:", premiumAmenities);
 
   if (premiumAmenities.length > 0) {
     try {
       const authHeader = request.headers.get("authorization");
-      const supabaseAuth = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        { global: { headers: authHeader ? { Authorization: authHeader } : {} } }
-      );
+      console.log("Auth Header Present:", !!authHeader); // Log if header exists (don't log the full token for security)
 
-      const {
-        data: { user },
-      } = await supabaseAuth.auth.getUser();
-
-      if (!user) {
+      if (!authHeader) {
+        console.log("Error: Missing Authorization Header");
         return NextResponse.json(
           {
             success: false,
             message: "error",
-            data: { details: "Login required for premium filters" },
+            data: { details: "Login required for premium filters (No Token)" },
           },
           { status: 401 }
         );
       }
 
+      const supabaseAuth = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseAuth.auth.getUser();
+
+      if (authError || !user) {
+        console.log("Error: User fetch failed", authError);
+        return NextResponse.json(
+          {
+            success: false,
+            message: "error",
+            data: { details: "Invalid session or token expired" },
+          },
+          { status: 401 }
+        );
+      }
+
+      console.log("User Found:", user.id);
+
       const subscription = await getUserSubscription(user.id);
-      if (!subscription.isPremium) {
+      console.log("Subscription Status:", subscription);
+
+      if (!subscription || !subscription.isPremium) {
+        console.log("Error: User is not premium");
         return NextResponse.json(
           {
             success: false,
@@ -79,12 +103,12 @@ export async function GET(request) {
         );
       }
     } catch (err) {
-      console.error("Auth check error:", err);
+      console.error("CRITICAL AUTH CRASH:", err);
       return NextResponse.json(
         {
           success: false,
           message: "error",
-          data: { details: "Authentication failed" },
+          data: { details: "Authentication check failed internally" },
         },
         { status: 401 }
       );
@@ -138,10 +162,12 @@ export async function GET(request) {
   if (amenities.length > 0) {
     filteredProperties = properties.filter((property) => {
       const propertyAmenities = property.amenities || [];
+
       const normPropAmenities = propertyAmenities.map((a) =>
         typeof a === "string" ? a.toLowerCase() : a
       );
 
+      // Use .every() to ensure property has ALL selected amenities
       return amenities.every((selectedAmenity) =>
         normPropAmenities.includes(selectedAmenity.toLowerCase())
       );
