@@ -17,6 +17,12 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscription, setSubscription] = useState({
+    isPremium: false,
+    tier: "free",
+    status: null,
+  });
 
   const supabase = createClientComponentClient();
   const router = useRouter();
@@ -37,9 +43,25 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const fetchUserSubscription = useCallback(async () => {
+    setSubscriptionLoading(true);
+    try {
+      const response = await fetch("/api/user/subscription-status");
+      const result = await response.json();
+      setSubscription(result);
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      setSubscription({ isPremium: false, tier: "free", status: null });
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const initAuth = async () => {
-      // Check active session from Supabase (verifies Cookie)
+      setLoading(true);
+      setSubscriptionLoading(true);
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -47,39 +69,47 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         setUser(session.user);
         setSession(session);
-        await fetchUserProfile();
+        await Promise.all([fetchUserProfile(), fetchUserSubscription()]);
       } else {
         setUser(null);
         setSession(null);
         setProfile(null);
+        setSubscription({ isPremium: false, tier: "free", status: null });
       }
       setLoading(false);
+      setSubscriptionLoading(false);
     };
 
     initAuth();
 
     const {
-      data: { subscription },
+      data: { subscription: authSubscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user);
         setSession(session);
         if (event === "SIGNED_IN") {
-          await fetchUserProfile();
+          setSubscriptionLoading(true);
+
+          await Promise.all([fetchUserProfile(), fetchUserSubscription()]);
+
+          setSubscriptionLoading(false);
           router.refresh();
         }
       } else {
         setUser(null);
         setSession(null);
         setProfile(null);
+        setSubscription({ isPremium: false, tier: "free", status: null });
+        setSubscriptionLoading(false);
         router.refresh();
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      authSubscription.unsubscribe();
     };
-  }, [supabase, fetchUserProfile, router]);
+  }, [supabase, fetchUserProfile, fetchUserSubscription, router]);
 
   const login = async (email, password) => {
     try {
@@ -93,11 +123,12 @@ export function AuthProvider({ children }) {
 
       if (result.success) {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (user) {
-          setUser(user);
+        if (session) {
+          setSession(session);
+          setUser(session.user);
           await fetchUserProfile();
         }
 
@@ -150,11 +181,15 @@ export function AuthProvider({ children }) {
         user,
         session,
         profile,
+        subscription,
+        isPremium: subscription.isPremium,
         login,
         signup,
         logout,
         loading,
+        subscriptionLoading,
         fetchUserProfile,
+        refreshSubscription: fetchUserSubscription,
       }}
     >
       {children}

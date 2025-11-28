@@ -81,18 +81,7 @@ function PropertiesContent() {
       }`;
 
       // Use the session token from context first
-      let accessToken = session?.access_token;
-
-      // Fallback: If context is missing session, try fetching it directly
-      if (!accessToken) {
-        const { data } = await supabase.auth.getSession();
-        accessToken = data.session?.access_token;
-      }
-
-      console.log(
-        "Fetch Properties - Access Token:",
-        accessToken ? "Present" : "Missing"
-      );
+      const accessToken = session?.access_token;
 
       fetch(url, {
         headers: {
@@ -105,7 +94,7 @@ function PropertiesContent() {
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log("API Response:", data);
+          // console.log("API Response:", data);
           if (data.success) {
             const validProperties = data.data.map((p) => ({
               ...p,
@@ -144,7 +133,7 @@ function PropertiesContent() {
 
   // Handle filter application
   const handleApplyFilters = (filters) => {
-    console.log("Applying filters:", filters);
+    // console.log("Applying filters:", filters);
     setAppliedFilters(filters);
     fetchProperties(filters);
   };
@@ -243,14 +232,16 @@ function PropertiesContent() {
           <div className="relative h-screen w-screen overflow-hidden">
             <div className="absolute top-0 left-0 h-full w-full">
               <Map
-                center={center}
-                onCenterChanged={(e) => setCenter(e.map.getCenter().toJSON())}
-                zoom={zoom}
-                onZoomChanged={(e) => setZoom(e.map.getZoom())}
+                defaultCenter={center}
+                defaultZoom={zoom}
                 disableDefaultUI={true}
                 gestureHandling="greedy"
                 mapId="af1b14d4f5d1b9695cb5c9d6"
                 onClick={() => setSelectedProperty(null)}
+                onCameraChanged={(ev) => {
+                  setCenter(ev.detail.center);
+                  setZoom(ev.detail.zoom);
+                }}
               >
                 {filteredListings
                   .filter(
@@ -281,6 +272,7 @@ function PropertiesContent() {
               <MapPropertyCard
                 property={selectedProperty}
                 onClose={() => setSelectedProperty(null)}
+                activeCount={getActiveFilterCount()}
               />
             )}
             <div className="absolute top-6 z-10 w-full flex justify-center gap-4 px-6">

@@ -42,14 +42,14 @@ export async function GET(request) {
     (a) => !FREE_AMENITIES.includes(a.toLowerCase())
   );
 
-  console.log("--- API Request Debug ---");
-  console.log("Requested Amenities:", amenities);
-  console.log("Detected Premium Amenities:", premiumAmenities);
+  // console.log("--- API Request Debug ---");
+  // console.log("Requested Amenities:", amenities);
+  // console.log("Detected Premium Amenities:", premiumAmenities);
 
   if (premiumAmenities.length > 0) {
     try {
       const authHeader = request.headers.get("authorization");
-      console.log("Auth Header Present:", !!authHeader); // Log if header exists (don't log the full token for security)
+      // console.log("Auth Header Present:", !!authHeader); // Log if header exists (don't log the full token for security)
 
       if (!authHeader) {
         console.log("Error: Missing Authorization Header");
@@ -86,10 +86,10 @@ export async function GET(request) {
         );
       }
 
-      console.log("User Found:", user.id);
+      // console.log("User Found:", user.id);
 
       const subscription = await getUserSubscription(user.id);
-      console.log("Subscription Status:", subscription);
+      // console.log("Subscription Status:", subscription);
 
       if (!subscription || !subscription.isPremium) {
         console.log("Error: User is not premium");
@@ -145,7 +145,11 @@ export async function GET(request) {
     }
   }
 
-  // Execute
+  if (amenities.length > 0) {
+    query = query.contains("amenities", amenities);
+  }
+
+  // Then just use the direct query result:
   const { data: properties, error } = await query;
 
   if (error) {
@@ -156,27 +160,9 @@ export async function GET(request) {
     );
   }
 
-  // 4. Client-side Exact Amenity Match
-  let filteredProperties = properties;
-
-  if (amenities.length > 0) {
-    filteredProperties = properties.filter((property) => {
-      const propertyAmenities = property.amenities || [];
-
-      const normPropAmenities = propertyAmenities.map((a) =>
-        typeof a === "string" ? a.toLowerCase() : a
-      );
-
-      // Use .every() to ensure property has ALL selected amenities
-      return amenities.every((selectedAmenity) =>
-        normPropAmenities.includes(selectedAmenity.toLowerCase())
-      );
-    });
-  }
-
   return NextResponse.json({
     success: true,
     message: "successful",
-    data: filteredProperties,
+    data: properties,
   });
 }
