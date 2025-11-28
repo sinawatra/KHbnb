@@ -128,10 +128,9 @@ export default function Filter({
   currentFilters = {},
   activeCount = 0,
 }) {
-  const { user } = useAuth();
+  const { user, isPremium, subscriptionLoading } = useAuth();
+  const showPremiumFeatures = isPremium && !subscriptionLoading;
   const [open, setOpen] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
-
   const [minPrice, setMinPrice] = useState(currentFilters.minPrice || 0);
   const [maxPrice, setMaxPrice] = useState(currentFilters.maxPrice || 500);
   const [beds, setBeds] = useState(
@@ -141,19 +140,6 @@ export default function Filter({
   const [selectedAmenities, setSelectedAmenities] = useState(
     currentFilters.amenities || []
   );
-
-  // Check subscription status
-  useEffect(() => {
-    if (user) {
-      fetch("/api/user/subscription-status")
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("Subscription Status:", data);
-          setIsPremium(data.isPremium);
-        })
-        .catch(() => setIsPremium(false));
-    }
-  }, [user]);
 
   // Sync state when dialog opens with current filters
   useEffect(() => {
@@ -387,30 +373,48 @@ export default function Filter({
 
           {/* PREMIUM AMENITIES - Compact Lock */}
           <div className="relative">
-            {!isPremium && (
+            {(!isPremium || subscriptionLoading) && (
               <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center p-4">
-                <Lock className="w-8 h-8 text-gray-400 mb-2" />
-                <p className="text-sm font-semibold mb-1">Premium Feature</p>
-                <p className="text-xs text-gray-600 mb-3 text-center">
-                  Filter by Pool, Kitchen, Gym, Sea View & more
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setOpen(false);
-                    window.location.href = "/subscription";
-                  }}
-                  className="bg-red-600 text-white hover:bg-red-700 text-xs px-4 py-2"
-                >
-                  Upgrade
-                </Button>
+                {subscriptionLoading ? (
+                  <>
+                    <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-600 rounded-full animate-spin mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Checking subscription...
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-8 h-8 text-gray-400 mb-2" />
+                    <p className="text-sm font-semibold mb-1">
+                      Premium Feature
+                    </p>
+                    <p className="text-xs text-gray-600 mb-3 text-center">
+                      Filter by Pool, Kitchen, Gym, Sea View & more
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setOpen(false);
+                        window.location.href = "/subscription";
+                      }}
+                      className="bg-red-600 text-white hover:bg-red-700 text-xs px-4 py-2"
+                    >
+                      Upgrade
+                    </Button>
+                  </>
+                )}
               </div>
             )}
-
-            <div className={!isPremium ? "pointer-events-none opacity-50" : ""}>
+            <div
+              className={
+                !isPremium || subscriptionLoading
+                  ? "pointer-events-none opacity-50"
+                  : ""
+              }
+            >
               <h3 className="text-lg font-medium mb-4">
                 Amenities
-                {!isPremium && (
+                {!isPremium && !subscriptionLoading && (
                   <Lock className="inline-block w-4 h-4 ml-2 text-gray-400" />
                 )}
               </h3>
@@ -418,7 +422,6 @@ export default function Filter({
                 {PREMIUM_AMENITIES.map((amenity) => {
                   const Icon = getAmenityIcon(amenity);
                   const isChecked = selectedAmenities.includes(amenity);
-
                   return (
                     <label
                       key={amenity}
@@ -432,7 +435,7 @@ export default function Filter({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => handleAmenityToggle(amenity)}
-                        disabled={!isPremium}
+                        disabled={!isPremium || subscriptionLoading}
                         className="w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                       />
                       <Icon size={20} className="text-gray-700" />

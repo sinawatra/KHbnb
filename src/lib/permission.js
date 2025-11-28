@@ -1,9 +1,6 @@
-// @/lib/permission.js
-import "server-only"; // 1. Prevents client-side bundle leakage
+import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { stripe } from "@/lib/stripe";
 
-// Create the admin client once
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,39 +10,27 @@ export async function getUserSubscription(userId) {
   try {
     const { data: subData, error: subError } = await supabase
       .from("user_subscriptions")
-      .select("stripe_subscription_id")
+      .select("status, end_date, stripe_subscription_id")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (subError) {
       console.error("DB Error:", subError);
-      // Fail safely to free tier
       return createDefaultSubscription();
     }
 
-    if (!subData?.stripe_subscription_id) {
+    if (!subData) {
       return createDefaultSubscription();
     }
 
-    // Optimization: In the future, select 'status' from DB here
-    // to avoid the await stripe.subscriptions.retrieve call below.
-
-    const subscription = await stripe.subscriptions.retrieve(
-      subData.stripe_subscription_id
-    );
-
-    // 2. Logic Check: Include 'trialing' as a premium state
-    const isValidStatus = ["active", "trialing"].includes(subscription.status);
+    // Check if subscription is active or cancelling (both are premium)
+    const isValidStatus = ["active", "cancelling"].includes(subData.status);
 
     return {
       isPremium: isValidStatus,
       tier: isValidStatus ? "premium" : "free",
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      // 3. Robust Date Handling: Ensure we handle nulls
-      currentPeriodEnd: subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000)
-        : null,
-      status: subscription.status,
+      status: subData.status,
+      endDate: subData.end_date,
     };
   } catch (error) {
     console.error("Error fetching subscription:", error);
@@ -53,14 +38,12 @@ export async function getUserSubscription(userId) {
   }
 }
 
-// Helper to standardise the 'free' return object
 function createDefaultSubscription() {
   return {
     isPremium: false,
     tier: "free",
-    cancelAtPeriodEnd: false,
-    currentPeriodEnd: null,
     status: null,
+    endDate: null,
   };
 }
 

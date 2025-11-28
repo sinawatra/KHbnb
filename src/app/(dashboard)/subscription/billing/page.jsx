@@ -109,7 +109,6 @@ export default function BillingPage() {
       setErrorMessage("Please select a plan and a payment method.");
       return;
     }
-
     setIsLoading(true);
     setErrorMessage("");
 
@@ -140,6 +139,8 @@ export default function BillingPage() {
       if (!res.ok || data.error) {
         throw new Error(data.error?.message || "Something went wrong.");
       }
+
+      await fetch("/api/user/subscription-status");
 
       alert("Subscription successful!");
       router.refresh();
