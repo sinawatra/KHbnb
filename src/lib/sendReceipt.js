@@ -30,6 +30,7 @@ export async function sendBookingReceipt(email, bookingDetails, totalAmount) {
         month: "short",
         day: "numeric",
         year: "numeric",
+        timeZone: "UTC",
       });
 
     const checkInStr = formatDate(checkIn);

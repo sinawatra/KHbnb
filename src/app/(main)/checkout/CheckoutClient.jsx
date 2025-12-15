@@ -24,6 +24,15 @@ function CheckoutForm({ bookingData }) {
   const [message, setMessage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const formatDateForDB = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) {
@@ -75,8 +84,8 @@ function CheckoutForm({ bookingData }) {
         cache: "no-store",
         body: JSON.stringify({
           property_id: propId,
-          check_in_date: bookingData.checkIn,
-          check_out_date: bookingData.checkOut,
+          check_in_date: formatDateForDB(bookingData.checkIn),
+          check_out_date: formatDateForDB(bookingData.checkOut),
           num_guests: bookingData.guests,
           total_price: bookingData.total,
           platform_revenue: bookingData.platformRevenue,
@@ -216,6 +225,15 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const formatDateForDB = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  
   useEffect(() => {
     if (!loading && !user) {
       router.push("/register");
@@ -289,8 +307,8 @@ export default function CheckoutPage() {
         cache: "no-store",
         body: JSON.stringify({
           property_id: propId,
-          check_in_date: bookingData.checkIn,
-          check_out_date: bookingData.checkOut,
+          check_in_date: formatDateForDB(bookingData.checkIn),
+          check_out_date: formatDateForDB(bookingData.checkOut),
           num_guests: bookingData.guests,
           total_price: bookingData.total,
           platform_revenue: bookingData.platformRevenue,
@@ -502,7 +520,8 @@ export default function CheckoutPage() {
                   Log in or sign up
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Logged in as {profile?.full_name || user?.email || "User"}{" "}
+                  Logged in as{" "}
+                  {profile?.full_name || user?.email || "User"}{" "}
                 </p>
               </div>
 
