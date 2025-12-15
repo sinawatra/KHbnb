@@ -12,6 +12,8 @@ export async function getUserSubscription(userId) {
       .from("user_subscriptions")
       .select("status, end_date, stripe_subscription_id")
       .eq("user_id", userId)
+      .order("end_date", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (subError) {

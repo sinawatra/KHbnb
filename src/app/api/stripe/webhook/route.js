@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
+import { sendBookingReceipt } from "@/lib/sendReceipt";
+import { after } from "next/server";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -35,7 +37,7 @@ export async function POST(req) {
   try {
     switch (event.type) {
       // =====================================================
-      // 1. SUBSCRIPTION CREATED / UPDATED
+      // 1. SUBSCRIPTION CREATED
       // =====================================================
       case "customer.subscription.created":
       case "customer.subscription.updated": {
@@ -50,7 +52,6 @@ export async function POST(req) {
           break;
         }
 
-        // Handle Cancellations
         if (
           subscription.cancel_at_period_end &&
           subscription.status === "active"
@@ -62,9 +63,6 @@ export async function POST(req) {
               end_date: new Date(periodEnd * 1000).toISOString(),
             })
             .eq("stripe_subscription_id", subscription.id);
-          console.log(
-            `Subscription marked for cancellation: ${subscription.id}`
-          );
           break;
         }
 
@@ -116,25 +114,20 @@ export async function POST(req) {
         );
 
         if (error) console.error("Supabase error:", error);
-        else console.log(`Subscription activated for user ${user.user_id}`);
         break;
       }
 
       // =====================================================
-      // 2. INVOICE PAID (Handles Recurring Subscription Payments)
+      // 2. INVOICE PAID
       // =====================================================
       case "invoice.paid": {
         const eventInvoice = event.data.object;
-        console.log(`\n[DEBUG] Invoice Paid: ${eventInvoice.id}`);
-
-        // 1. Simple ID Lookup (No API calls/Refetching)
         let finalChargeId = eventInvoice.charge;
 
         if (!finalChargeId && typeof eventInvoice.payment_intent === "string") {
           finalChargeId = eventInvoice.payment_intent;
         }
 
-        // 2. FIND USER
         const { data: user } = await supabaseAdmin
           .from("users")
           .select("user_id")
@@ -145,11 +138,6 @@ export async function POST(req) {
           console.error("User not found for invoice:", eventInvoice.id);
           break;
         }
-
-        // 3. UPSERT PAYMENT
-        console.log(
-          `[DEBUG] Upserting Payment (Charge ID: ${finalChargeId || "NULL"})`
-        );
 
         const { error } = await supabaseAdmin.from("payments").upsert(
           {
@@ -165,7 +153,7 @@ export async function POST(req) {
 
         if (error) console.error("Payment Insert Error:", error);
 
-        // 4. RENEWAL (Update Subscription Dates)
+        // Renewal Logic
         if (
           eventInvoice.subscription &&
           eventInvoice.billing_reason === "subscription_cycle"
@@ -183,7 +171,6 @@ export async function POST(req) {
                 status: "active",
               })
               .eq("stripe_subscription_id", eventInvoice.subscription);
-            console.log(`Subscription renewed: ${eventInvoice.subscription}`);
           } catch (e) {
             console.error("Renewal update failed", e);
           }
@@ -192,11 +179,10 @@ export async function POST(req) {
       }
 
       // =====================================================
-      // 3. PAYMENT INTENT (Handles One-Time Bookings)
+      // 3. PAYMENT INTENT
       // =====================================================
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
-        console.log(`\n[DEBUG] PaymentIntent: ${paymentIntent.id}`);
 
         if (paymentIntent.invoice) {
           console.log("[DEBUG] Skipping PI: It is a subscription.");
@@ -204,22 +190,26 @@ export async function POST(req) {
         }
 
         const bookingId = paymentIntent.metadata?.booking_id;
-        if (!bookingId) {
-          console.log("[DEBUG] Skipping PI: No booking_id found.");
-          break;
-        }
-
         const userId = paymentIntent.metadata?.user_id;
         const chargeId = paymentIntent.latest_charge;
 
-        if (!userId || !chargeId) {
-          console.error("[DEBUG] Missing user/charge ID in PI metadata");
+        if (!bookingId || !userId || !chargeId) break;
+
+        const { data: existingBooking } = await supabaseAdmin
+          .from("bookings")
+          .select("status")
+          .eq("id", bookingId)
+          .single();
+
+        if (existingBooking?.status === "confirmed") {
+          console.log(
+            `[WEBHOOK] Booking ${bookingId} already confirmed. Skipping.`
+          );
           break;
         }
 
-        console.log(`[DEBUG] Inserting Booking Payment: ${chargeId}`);
-
-        const { error } = await supabaseAdmin.from("payments").upsert(
+        // A. Insert Payment
+        const { error: payError } = await supabaseAdmin.from("payments").upsert(
           {
             stripe_charge_id: chargeId,
             user_id: userId,
@@ -231,14 +221,34 @@ export async function POST(req) {
           { onConflict: "stripe_charge_id" }
         );
 
-        if (error) {
-          console.error("[DEBUG] DB Error (PI):", error);
-        } else {
-          await supabaseAdmin
+        if (!payError) {
+          // B. Confirm Booking & Fetch Data
+          const { data: bookingData, error: bookingError } = await supabaseAdmin
             .from("bookings")
             .update({ status: "confirmed" })
-            .eq("id", bookingId);
-          console.log(`[DEBUG] Booking ${bookingId} confirmed.`);
+            .eq("id", bookingId)
+            .select(
+              `
+              *,
+              property:properties ( title, location ),
+              user:users ( email )
+            `
+            )
+            .single();
+
+          if (bookingData && !bookingError) {
+            console.log(`[WEBHOOK] Booking ${bookingId} confirmed.`);
+
+            // C. Send Email (SAFE FOR GMAIL)
+            // 'after' runs this in the background so Stripe gets a 200 OK immediately
+            after(async () => {
+              await sendBookingReceipt(
+                bookingData.user?.email,
+                bookingData,
+                paymentIntent.amount / 100
+              );
+            });
+          }
         }
         break;
       }
@@ -250,7 +260,6 @@ export async function POST(req) {
             .from("user_subscriptions")
             .update({ status: "inactive" })
             .eq("stripe_subscription_id", invoice.subscription);
-          console.log(`Payment failed for: ${invoice.subscription}`);
         }
         break;
       }
@@ -264,7 +273,6 @@ export async function POST(req) {
             end_date: new Date().toISOString(),
           })
           .eq("stripe_subscription_id", subscription.id);
-        console.log(`Subscription canceled: ${subscription.id}`);
         break;
       }
 

@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { sendBookingReceipt } from "@/lib/sendReceipt";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(request) {
     }
 
     // --- Step 2: Get all the booking details ---
+    const body = await request.json();
     const {
       property_id,
       check_in_date,
@@ -29,13 +31,10 @@ export async function POST(request) {
       billing_city,
       billing_country,
       billing_postal_code,
-    } = await request.json();
-
-    // Debugging log to see what the SERVER received
-    console.log("SERVER RECEIVED Property ID:", property_id);
+    } = body;
 
     // --- Step 3: Insert the new booking ---
-    const { data, error } = await supabase
+    const { data: bookingData, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         user_id: session.user.id,
@@ -54,16 +53,44 @@ export async function POST(request) {
       .select()
       .single();
 
-    if (error) {
-      console.error("Error creating booking:", error);
+    if (bookingError) {
+      console.error("Error creating booking:", bookingError);
       return NextResponse.json(
-        { error: "Failed to create booking.", details: error.message },
+        { error: "Failed to create booking.", details: bookingError.message },
         { status: 500 }
       );
     }
 
+    // --- Step 4: Fetch Property Details for the Email ---
+    const { data: propertyData, error: propertyError } = await supabase
+      .from("properties")
+      .select("title, host_name, price_per_night, provinces(name)")
+      .eq("properties_id", property_id)
+      .single();
+
+    if (propertyError) {
+      console.error(
+        "Could not fetch property details for email:",
+        propertyError
+      );
+    }
+
+    // --- Step 5: Send the Email ---
+    if (propertyData) {
+      sendBookingReceipt(
+        session.user.email,
+        {
+          property: propertyData,
+          check_in_date,
+          check_out_date,
+          num_guests,
+        },
+        total_price
+      );
+    }
+
     return NextResponse.json(
-      { message: "Booking created successfully.", booking: data },
+      { message: "Booking created successfully.", booking: bookingData },
       { status: 201 }
     );
   } catch (err) {
