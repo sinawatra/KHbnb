@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Loader2, Lock } from "lucide-react";
+import { Calendar, Users, Loader2, Lock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
 const FALLBACK_IMAGE = "/beachvilla.jpg";
 
-export default function BookingCard({ booking, isPremium }) {
+export default function BookingCard({ booking, isPremium, onViewReceipt }) {
   const [isCancelling, setIsCancelling] = useState(false);
 
   const isValidUrl = (s) => {
@@ -61,7 +61,6 @@ export default function BookingCard({ booking, isPremium }) {
 
       // 3. Success handling
       toast.success("Booking cancelled successfully");
-
       window.location.reload();
     } catch (error) {
       console.error(error);
@@ -127,13 +126,27 @@ export default function BookingCard({ booking, isPremium }) {
         </div>
 
         {/* Footer / Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <p className="text-lg font-bold text-gray-900">
-            ${Number(booking.price).toLocaleString()}
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between pt-4 border-t border-gray-100 gap-4">
+          {/* Price Section */}
+          <div>
+            <p className="text-lg font-bold text-gray-900">
+              ${Number(booking.price).toLocaleString()}
+            </p>
+          </div>
 
-          <div className="flex gap-3">
-            {/* THE LINK LOGIC */}
+          {/* Action Buttons Group */}
+          <div className="flex gap-2 flex-wrap md:justify-end">
+            {/* 1. View Receipt Button (New Position) */}
+            <Button
+              variant="outline"
+              className="shadow-sm bg-white hover:bg-gray-50 text-gray-700"
+              onClick={onViewReceipt}
+            >
+              <Receipt className="mr-2 h-4 w-4" />
+              Receipt
+            </Button>
+
+            {/* 2. View Property Button */}
             <Link href={`/properties/${booking.propertyId}`}>
               <Button
                 variant="outline"
@@ -142,9 +155,10 @@ export default function BookingCard({ booking, isPremium }) {
                 View Property
               </Button>
             </Link>
+
+            {/* 3. Cancel Button */}
             {(booking.status === "pending" || booking.status === "confirmed") &&
               (isPremium ? (
-                // Premium: Full cancel functionality
                 <Button
                   variant="destructive"
                   onClick={handleCancelBooking}
@@ -160,10 +174,9 @@ export default function BookingCard({ booking, isPremium }) {
                   )}
                 </Button>
               ) : (
-                // Free: Show button but redirect to upgrade
                 <Button
                   variant="outline"
-                  className="border-red-600 text-red-600 hover:bg-red-50 relative"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                   onClick={() => {
                     if (
                       confirm(
@@ -176,9 +189,6 @@ export default function BookingCard({ booking, isPremium }) {
                 >
                   <Lock className="mr-2 h-4 w-4" />
                   Cancel Booking
-                  <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                    Premium
-                  </span>
                 </Button>
               ))}
           </div>
