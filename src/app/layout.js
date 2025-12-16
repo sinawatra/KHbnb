@@ -1,6 +1,7 @@
 import { Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/contexts/AuthContext";
+import { CurrencyProvider } from "@/components/contexts/CurrencyContext";
 import SubscriptionRefresher from "@/components/SubscriptionRefresher";
 
 const nunitoSans = Nunito_Sans({
@@ -27,8 +28,10 @@ export default function RootLayout({ children }) {
       <head></head>
       <body className={nunitoSans.className}>
         <AuthProvider>
-          <SubscriptionRefresher />
-          {children}
+          <CurrencyProvider>
+            <SubscriptionRefresher />
+            {children}
+          </CurrencyProvider>
         </AuthProvider>
       </body>
     </html>

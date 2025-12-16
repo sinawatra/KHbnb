@@ -1,8 +1,12 @@
+"use client";
 import { MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 
 export default function FeaturedProductCard({ product }) {
+  const { convertPrice } = useCurrency();
+
   return (
     <Link href={`/properties/${product.id}`}>
       <div className="bg-white shadow-md rounded-lg overflow-hidden w-100 hover:shadow-xl transition-shadow cursor-pointer">
@@ -23,7 +27,7 @@ export default function FeaturedProductCard({ product }) {
 
           <div className="flex justify-between items-center mt-4 pb-2">
             <span className="text-primary font-bold">
-              ${product.price}{" "}
+              {convertPrice(product.price)}
               <span className="text-gray-400 font-semibold">/ night</span>
             </span>
           </div>

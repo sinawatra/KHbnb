@@ -36,7 +36,7 @@ export default async function SubscriptionPage() {
     return redirect("/login");
   }
 
-  // ✅ Query user_subscriptions table directly (no Stripe API call)
+  // Query user_subscriptions table directly (no Stripe API call)
   const { data: subscription } = await supabase
     .from("user_subscriptions")
     .select("status, end_date")

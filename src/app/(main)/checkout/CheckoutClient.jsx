@@ -11,6 +11,7 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -224,6 +225,7 @@ export default function CheckoutPage() {
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const { convertPrice } = useCurrency();
 
   const formatDateForDB = (dateString) => {
     if (!dateString) return null;
@@ -247,31 +249,33 @@ export default function CheckoutPage() {
 
     let parsedData = JSON.parse(data);
 
+    // 1. Handle Dates & Nights
     const checkInDate = new Date(parsedData.checkIn);
     const checkOutDate = new Date(parsedData.checkOut);
-
-    // Reset time to midnight to compare just the dates (ignoring time)
     checkInDate.setHours(0, 0, 0, 0);
     checkOutDate.setHours(0, 0, 0, 0);
 
-    // Force it to be 1 Night.
-    if (checkInDate.getTime() === checkOutDate.getTime()) {
-      console.warn(
-        "Same day booking detected (0 nights). Auto-adjusting to 1 night."
-      );
+    let nights = parsedData.nights;
 
+    if (checkInDate.getTime() === checkOutDate.getTime()) {
+      nights = 1;
       const nextDay = new Date(checkInDate);
       nextDay.setDate(nextDay.getDate() + 1);
       parsedData.checkOut = nextDay.toISOString();
-      parsedData.nights = 1;
-      parsedData.subtotal = parsedData.property.pricePerNight * 1;
-
-      parsedData.total =
-        parsedData.subtotal +
-        (parsedData.cleaningFee || 0) +
-        (parsedData.serviceFee || 0);
     }
-    // --------------------------------------------------
+    parsedData.nights = nights;
+
+    // 2. RECALCULATE PRICES
+    const pricePerNight = Number(parsedData.property.pricePerNight) || 0;
+    const cleaningFee = Number(parsedData.cleaningFee) || 0;
+    const subtotal = pricePerNight * nights;
+    const serviceFee = subtotal * 0.10;
+    const total = subtotal + cleaningFee + serviceFee;
+
+    parsedData.subtotal = subtotal;
+    parsedData.serviceFee = serviceFee; 
+    parsedData.platformRevenue = serviceFee;
+    parsedData.total = total;
 
     setBookingData(parsedData);
   }, [router, step, loading, user]);
@@ -485,24 +489,24 @@ export default function CheckoutPage() {
             <div className="pt-4 border-t space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  ${bookingData.property.pricePerNight} x {bookingData.nights}{" "}
+                  {convertPrice(bookingData.property.pricePerNight)} x {bookingData.nights}{" "}
                   nights
                 </span>
-                <span className="text-gray-900">${bookingData.subtotal}</span>
+                <span className="text-gray-900">{convertPrice(bookingData.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Cleaning fee</span>
                 <span className="text-gray-900">
-                  ${bookingData.cleaningFee}
+                  {convertPrice(bookingData.cleaningFee)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Service fee</span>
-                <span className="text-gray-900">${bookingData.serviceFee}</span>
+                <span className="text-gray-900">{convertPrice(bookingData.serviceFee)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg pt-2 border-t">
                 <span>Total paid</span>
-                <span className="text-green-600">${bookingData.total}</span>
+                <span className="text-green-600">{convertPrice(bookingData.total)}</span>
               </div>
             </div>
           </div>
@@ -562,11 +566,10 @@ export default function CheckoutPage() {
                     {savedCards.map((card) => (
                       <div
                         key={card.id}
-                        className={`border rounded-lg p-4 flex justify-between items-center ${
-                          selectedCardId === card.id
+                        className={`border rounded-lg p-4 flex justify-between items-center ${selectedCardId === card.id
                             ? "border-red-600 ring-1 ring-red-600"
                             : ""
-                        }`}
+                          }`}
                       >
                         <div>
                           <p className="font-semibold">
@@ -579,11 +582,10 @@ export default function CheckoutPage() {
                         <button
                           onClick={() => setSelectedCardId(card.id)}
                           disabled={selectedCardId === card.id}
-                          className={`font-semibold ${
-                            selectedCardId === card.id
+                          className={`font-semibold ${selectedCardId === card.id
                               ? "text-gray-500"
                               : "text-red-600"
-                          }`}
+                            }`}
                         >
                           {selectedCardId === card.id
                             ? "Selected"
@@ -601,10 +603,9 @@ export default function CheckoutPage() {
                       >
                         {isLoading
                           ? "Processing..."
-                          : `Confirm and Pay with •••• ${
-                              savedCards.find((c) => c.id === selectedCardId)
-                                ?.card.last4
-                            }`}
+                          : `Confirm and Pay with •••• ${savedCards.find((c) => c.id === selectedCardId)
+                            ?.card.last4
+                          }`}
                       </button>
                     )}
                     {errorMessage && (
@@ -680,24 +681,24 @@ export default function CheckoutPage() {
                   <h3 className="font-semibold">Price Details</h3>
                   <div className="flex justify-between text-sm">
                     <span className="underline">
-                      ${bookingData.property.pricePerNight} x{" "}
+                      {convertPrice(bookingData.property.pricePerNight)} x{" "}
                       {bookingData.nights} nights
                     </span>
-                    <span>${bookingData.subtotal}</span>
+                    <span>{convertPrice(bookingData.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="underline">Cleaning fee</span>
-                    <span>${bookingData.cleaningFee}</span>
+                    <span>{convertPrice(bookingData.cleaningFee)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="underline">Service fee</span>
-                    <span>${bookingData.serviceFee}</span>
+                    <span>{convertPrice(bookingData.serviceFee)}</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total USD</span>
-                  <span>${bookingData.total}</span>
+                  <span>{convertPrice(bookingData.total)}</span>
                 </div>
                 <p className="text-xs text-gray-600 mt-2">VAT 10% included</p>
               </div>

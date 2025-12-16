@@ -1,7 +1,10 @@
 import { X } from "lucide-react";
 import Image from "next/image";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 
 export default function ReceiptModal({ booking, onClose }) {
+  const { convertPrice } = useCurrency();
+
   if (!booking) return null;
 
   // Helper to format currency
@@ -58,7 +61,7 @@ export default function ReceiptModal({ booking, onClose }) {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Paid {formatMoney(total)}
+              Paid {convertPrice(total)}
             </h1>
             <p className="text-sm text-gray-500">
               Booking ID: #{booking.id.slice(0, 8)}
@@ -101,7 +104,7 @@ export default function ReceiptModal({ booking, onClose }) {
           <div className="pt-4 border-t space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Total Price</span>
-              <span className="font-bold">{formatMoney(total)}</span>
+              <span className="font-bold">{convertPrice(total)}</span>
             </div>
           </div>
         </div>
