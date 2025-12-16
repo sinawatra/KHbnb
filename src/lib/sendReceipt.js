@@ -37,6 +37,7 @@ export async function sendBookingReceipt(email, bookingDetails, totalAmount) {
     const checkOutStr = formatDate(checkOut);
     const hostName = property.host_name || "Unknown Host";
     const locationName = property.provinces?.name || "Cambodia";
+    const baseUrl = "https://khbnb-gamma.vercel.app";
 
     const htmlTemplate = `
       <!DOCTYPE html>
@@ -128,9 +129,9 @@ export async function sendBookingReceipt(email, bookingDetails, totalAmount) {
                     </div>
 
                     <div style="text-align: center; margin-top: 30px;">
-                      <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/booking-history" style="display: inline-block; background-color: #000000; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">View My Bookings</a>
+                      <a href="${baseUrl}/booking-history" style="display: inline-block; background-color: #000000; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">View My Bookings</a>
                       <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
-                        <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}" style="color: #6b7280; text-decoration: underline;">Return Home</a>
+                        <a href="${baseUrl}" style="color: #6b7280; text-decoration: underline;">Return Home</a>
                       </p>
                     </div>
 
