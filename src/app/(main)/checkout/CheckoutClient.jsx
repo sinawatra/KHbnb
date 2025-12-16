@@ -233,7 +233,7 @@ export default function CheckoutPage() {
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
-  
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/register");
@@ -244,13 +244,42 @@ export default function CheckoutPage() {
       if (step !== "success") router.push("/properties");
       return;
     }
-    setBookingData(JSON.parse(data));
+
+    let parsedData = JSON.parse(data);
+
+    const checkInDate = new Date(parsedData.checkIn);
+    const checkOutDate = new Date(parsedData.checkOut);
+
+    // Reset time to midnight to compare just the dates (ignoring time)
+    checkInDate.setHours(0, 0, 0, 0);
+    checkOutDate.setHours(0, 0, 0, 0);
+
+    // Force it to be 1 Night.
+    if (checkInDate.getTime() === checkOutDate.getTime()) {
+      console.warn(
+        "Same day booking detected (0 nights). Auto-adjusting to 1 night."
+      );
+
+      const nextDay = new Date(checkInDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      parsedData.checkOut = nextDay.toISOString();
+      parsedData.nights = 1;
+      parsedData.subtotal = parsedData.property.pricePerNight * 1;
+
+      parsedData.total =
+        parsedData.subtotal +
+        (parsedData.cleaningFee || 0) +
+        (parsedData.serviceFee || 0);
+    }
+    // --------------------------------------------------
+
+    setBookingData(parsedData);
   }, [router, step, loading, user]);
 
   // Fetch saved cards
   useEffect(() => {
     if (user) {
-      console.log("🔍 User session:", {
+      console.log("User session:", {
         userId: user.id,
         email: user.email,
       });
