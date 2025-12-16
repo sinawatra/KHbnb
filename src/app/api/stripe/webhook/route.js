@@ -183,18 +183,63 @@ export async function POST(req) {
       // =====================================================
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object;
+        console.log(`[WEBHOOK] Processing PI: ${paymentIntent.id}`);
+        console.log(`[WEBHOOK] Metadata received:`, paymentIntent.metadata);
 
+        // 1. Subscription check
         if (paymentIntent.invoice) {
-          console.log("[DEBUG] Skipping PI: It is a subscription.");
+          console.log(
+            "[DEBUG] Skipping PI: It is a subscription (has invoice ID)."
+          );
           break;
         }
 
+        // 2. Validate Metadata
         const bookingId = paymentIntent.metadata?.booking_id;
-        const userId = paymentIntent.metadata?.user_id;
-        const chargeId = paymentIntent.latest_charge;
 
-        if (!bookingId || !userId || !chargeId) break;
+        if (!bookingId) {
+          console.error(
+            `[WEBHOOK-ERROR] Missing booking_id in metadata. Cannot proceed.`
+          );
+          break;
+        }
 
+        console.log(`[WEBHOOK] Found Booking ID: ${bookingId}`);
+
+        let userId = paymentIntent.metadata?.user_id;
+        // Fallback for charge ID if 'latest_charge' is null
+        const chargeId = paymentIntent.latest_charge || paymentIntent.id;
+
+        // 3. User ID Lookup (if missing in metadata)
+        if (!userId) {
+          console.log(
+            `[WEBHOOK] User ID missing in metadata. Looking up in DB...`
+          );
+          const { data: b, error: fetchError } = await supabaseAdmin
+            .from("bookings")
+            .select("user_id")
+            .eq("id", bookingId)
+            .single();
+
+          if (fetchError) {
+            console.error(
+              `[WEBHOOK-ERROR] DB lookup failed for booking ${bookingId}:`,
+              fetchError
+            );
+          }
+
+          userId = b?.user_id;
+          console.log(`[WEBHOOK] DB Lookup Result -> User ID: ${userId}`);
+        }
+
+        if (!userId) {
+          console.error(
+            `[WEBHOOK-ERROR] CRITICAL: Could not find User ID anywhere for booking ${bookingId}`
+          );
+          break;
+        }
+
+        // 4. Check Duplicate Processing
         const { data: existingBooking } = await supabaseAdmin
           .from("bookings")
           .select("status")
@@ -203,12 +248,14 @@ export async function POST(req) {
 
         if (existingBooking?.status === "confirmed") {
           console.log(
-            `[WEBHOOK] Booking ${bookingId} already confirmed. Skipping.`
+            `[WEBHOOK] Booking ${bookingId} is ALREADY confirmed. Skipping duplicate processing.`
           );
           break;
         }
 
-        // A. Insert Payment
+        console.log(`[WEBHOOK] Inserting payment record...`);
+
+        // 5. Insert Payment Record
         const { error: payError } = await supabaseAdmin.from("payments").upsert(
           {
             stripe_charge_id: chargeId,
@@ -221,34 +268,69 @@ export async function POST(req) {
           { onConflict: "stripe_charge_id" }
         );
 
-        if (!payError) {
-          // B. Confirm Booking & Fetch Data
-          const { data: bookingData, error: bookingError } = await supabaseAdmin
-            .from("bookings")
-            .update({ status: "confirmed" })
-            .eq("id", bookingId)
-            .select(
-              `
-              *,
-              property:properties ( title, location ),
-              user:users ( email )
-            `
-            )
-            .single();
+        if (payError) {
+          console.error("[WEBHOOK-ERROR] Payment Upsert Error:", payError);
+        } else {
+          console.log(`[WEBHOOK] Payment record inserted successfully.`);
+        }
 
-          if (bookingData && !bookingError) {
-            console.log(`[WEBHOOK] Booking ${bookingId} confirmed.`);
+        // 6. Confirm Booking (Status Update ONLY)
+        console.log(`[WEBHOOK] Updating booking status to 'confirmed'...`);
 
-            // C. Send Email (SAFE FOR GMAIL)
-            // 'after' runs this in the background so Stripe gets a 200 OK immediately
-            after(async () => {
+        const { error: updateError } = await supabaseAdmin
+          .from("bookings")
+          .update({ status: "confirmed" })
+          .eq("id", bookingId);
+
+        if (updateError) {
+          console.error("[WEBHOOK-ERROR] Booking Update Failed:", updateError);
+          break;
+        }
+
+        console.log(
+          `[WEBHOOK-SUCCESS] Booking ${bookingId} confirmed! Fetching details for email...`
+        );
+
+        // 7. Fetch Details & Send Email (Split Logic to avoid Join Error)
+
+        // A. Get Booking & Property Details
+        const { data: bookingDetails } = await supabaseAdmin
+          .from("bookings")
+          .select(`*, property:properties ( title, location )`)
+          .eq("id", bookingId)
+          .single();
+
+        // B. Get User Email (Via Auth Admin, not SQL Join)
+        const {
+          data: { user },
+          error: userError,
+        } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+        if (bookingDetails && user?.email) {
+          console.log(`[WEBHOOK] Sending email to: ${user.email}`);
+
+          after(async () => {
+            try {
               await sendBookingReceipt(
-                bookingData.user?.email,
-                bookingData,
+                user.email,
+                bookingDetails,
                 paymentIntent.amount / 100
               );
-            });
-          }
+              console.log(`[WEBHOOK] Email task queued successfully.`);
+            } catch (emailErr) {
+              console.error(`[WEBHOOK-ERROR] Email failed to send:`, emailErr);
+            }
+          });
+        } else {
+          if (userError)
+            console.error(
+              "[WEBHOOK-ERROR] Could not fetch user email:",
+              userError
+            );
+          else
+            console.warn(
+              "[WEBHOOK] Missing booking details or user email. Receipt skipped."
+            );
         }
         break;
       }
