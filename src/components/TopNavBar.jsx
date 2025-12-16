@@ -54,7 +54,7 @@ export default function TopNavBar() {
           </Link>
 
           {profile ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="Account"

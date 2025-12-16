@@ -285,7 +285,7 @@ export default function PropertyDetailsPage({ params }) {
                   src={displayImages[0]}
                   alt="Property Main"
                   fill
-                 className="object-cover object-center group-hover:brightness-90 transition"
+                  className="object-cover object-center group-hover:brightness-90 transition"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -496,36 +496,70 @@ export default function PropertyDetailsPage({ params }) {
                 <span className="text-gray-600">per night</span>
               </div>
 
-              {/* Date Picker & Guests (Same as your code) */}
+              {/* Date Picker & Guests */}
               <Popover>
-                <PopoverTrigger asChild>
-                  <div className="border rounded-lg mb-4 cursor-pointer">
-                    <div className="grid grid-cols-2 border-b">
-                      <div className="p-3 border-r">
-                        <div className="text-xs font-semibold">CHECK-IN</div>
-                        <div className="text-sm">{formatDate(date?.from)}</div>
+                <div className="border border-gray-300 rounded-lg mb-4 bg-white overflow-hidden shadow-sm">
+                  <PopoverTrigger asChild>
+                    <div className="grid grid-cols-2 border-b border-gray-300 cursor-pointer hover:bg-gray-100 transition-colors active:bg-gray-200">
+                      <div className="p-3 border-r border-gray-300">
+                        <div className="text-[10px] font-bold tracking-wider text-gray-800 uppercase">
+                          Check-in
+                        </div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {date?.from ? formatDate(date?.from) : "Add date"}
+                        </div>
                       </div>
                       <div className="p-3">
-                        <div className="text-xs font-semibold">CHECK-OUT</div>
-                        <div className="text-sm">{formatDate(date?.to)}</div>
+                        <div className="text-[10px] font-bold tracking-wider text-gray-800 uppercase">
+                          Check-out
+                        </div>
+                        <div className="text-sm text-gray-600 truncate">
+                          {date?.to ? formatDate(date?.to) : "Add date"}
+                        </div>
                       </div>
                     </div>
-                    <div className="p-3">
-                      <div className="text-xs font-semibold">GUESTS</div>
-                      <select
-                        value={guests}
-                        onChange={(e) => setGuests(Number(e.target.value))}
-                        className="text-sm w-full outline-none bg-transparent"
-                      >
-                        {[...Array(property.max_guests || 6)].map((_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {i + 1} guest{i > 0 ? "s" : ""}
-                          </option>
-                        ))}
-                      </select>
+                  </PopoverTrigger>
+
+                  {/* --- GUESTS --- */}
+                  <div className="p-3 relative hover:bg-gray-100 transition-colors cursor-pointer group">
+                    <div className="pointer-events-none">
+                      <div className="text-[10px] font-bold tracking-wider text-gray-800 uppercase mb-1">
+                        Guests
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600 font-medium">
+                          {guests} guest{guests > 1 ? "s" : ""}
+                        </span>
+
+                        <svg
+                          className="w-4 h-4 text-gray-500 group-hover:text-black transition-colors"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
                     </div>
+
+                    <select
+                      value={guests}
+                      onChange={(e) => setGuests(Number(e.target.value))}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none p-4"
+                    >
+                      {[...Array(property.max_guests || 6)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1} guest{i > 0 ? "s" : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </PopoverTrigger>
+                </div>
                 <PopoverContent className="w-auto p-0" align="end">
                   <Calendar
                     mode="range"
