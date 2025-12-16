@@ -3,6 +3,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import { useCurrency } from "./contexts/CurrencyContext";
 
 const PROVINCE_MAP = {
   1: "Phnom Penh",
@@ -15,7 +16,7 @@ const PROVINCE_MAP = {
 export default function PropertyCard({ property }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
-
+  const { convertPrice } = useCurrency();
   const images = Array.isArray(property.image_urls)
     ? property.image_urls
     : typeof property.image_urls === "string"
@@ -111,7 +112,7 @@ export default function PropertyCard({ property }) {
         <p className="text-sm text-gray-600">{locationName}</p>
 
         <div className="mt-1">
-          <span className="font-bold">${property.price_per_night}</span>
+          <span className="font-bold">{convertPrice(property.price_per_night)}</span>{" "}
           <span className="text-sm text-gray-600">/ night</span>
         </div>
       </div>

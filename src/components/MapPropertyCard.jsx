@@ -1,18 +1,20 @@
+"use client";
 import { useState } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import { useCurrency } from "./contexts/CurrencyContext";
 
 export default function MapPropertyCard({ property, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
-
+  const { convertPrice } = useCurrency();
   const rawImages = property.images || property.image_urls;
 
   const images = Array.isArray(rawImages)
     ? rawImages
     : typeof rawImages === "string"
-    ? JSON.parse(rawImages || "[]")
-    : [];
+      ? JSON.parse(rawImages || "[]")
+      : [];
 
   // Filter for valid Supabase URLs
   const validImages = images.filter((url) => {
@@ -40,6 +42,8 @@ export default function MapPropertyCard({ property, onClose }) {
     const newIndex = isLastSlide ? 0 : currentIndex + 1;
     setCurrentIndex(newIndex);
   };
+
+  const price = property.price_per_night || property.pricePerNight || 0;
 
   return (
     <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30 w-80">
@@ -92,11 +96,10 @@ export default function MapPropertyCard({ property, onClose }) {
                     {validImages.map((_, index) => (
                       <div
                         key={index}
-                        className={`h-1.5 w-1.5 rounded-full shadow-sm transition-all ${
-                          currentIndex === index
+                        className={`h-1.5 w-1.5 rounded-full shadow-sm transition-all ${currentIndex === index
                             ? "bg-white scale-125"
                             : "bg-white/60 hover:bg-white/80"
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>
@@ -124,7 +127,7 @@ export default function MapPropertyCard({ property, onClose }) {
             {property.dates || "Available now"}
           </p>
           <p className="font-semibold text-gray-900">
-            ${property.price_per_night || property.pricePerNight || "0"}{" "}
+            {convertPrice(price)}{" "}
             <span className="font-normal text-gray-600">night</span>
           </p>
         </div>

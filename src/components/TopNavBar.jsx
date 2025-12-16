@@ -6,6 +6,8 @@ import {
   UserRoundPen,
   Calendar,
   CreditCard,
+  ArrowRightLeft,
+  Check,
   CircleDollarSign,
 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
@@ -18,9 +20,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
+import { useCurrency } from "./contexts/CurrencyContext";
 
 export default function TopNavBar() {
   const { profile, loading, logout } = useAuth();
+  const { currency, setCurrency } = useCurrency();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -45,7 +49,34 @@ export default function TopNavBar() {
             KHbnb
           </Link>
         </div>
-        <div className="flex gap-15 items-center mr-6">
+        <div className="flex gap-4 items-center mr-6">
+
+          {/* --- CURRENCY SWITCHER START --- */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                aria-label="Change Currency"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-gray-500" />
+                <span>{currency}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setCurrency("USD")} className="cursor-pointer justify-between">
+                <span>USD ($)</span>
+                {currency === "USD" && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCurrency("KHR")} className="cursor-pointer justify-between">
+                <span>KHR (៛)</span>
+                {currency === "KHR" && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* --- CURRENCY SWITCHER END --- */}
+
+          <div className="h-6 w-px bg-gray-300 mx-2 hidden sm:block"></div>
+
           <Link
             href="/properties"
             className="flex p-2 items-center space-x-2 font-medium text-gray-800 hover:text-primary hover:cursor-pointer"
@@ -58,7 +89,7 @@ export default function TopNavBar() {
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label="Account"
-                  className="flex gap-2 rounded-xs p-2 hover:cursor-pointer group"
+                  className="flex gap-2 rounded-xs p-2 hover:cursor-pointer group items-center"
                 >
                   <User className="h-5 w-5 text-gray-600 group-hover:text-primary" />
                   <span className="font-medium text-gray-800 group-hover:text-primary">
@@ -106,9 +137,9 @@ export default function TopNavBar() {
           ) : (
             <Link
               href="/register"
-              className="rounded-4xl bg-primary px-10 py-3 text-sm font-semibold text-white hover:shadow-lg"
+              className="rounded-4xl bg-primary px-6 py-2 text-sm font-semibold text-white hover:shadow-lg transition-all"
             >
-              SIGN UP / LOGIN
+              Login
             </Link>
           )}
         </div>

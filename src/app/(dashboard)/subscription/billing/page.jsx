@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Plus, CheckCircle2, Circle, CreditCard } from "lucide-react";
 import StripePaymentElementWrapper from "@/components/StripePaymentElementWrapper";
 import StripePaymentForm from "@/components/StripePaymentForm";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 
 const plans = {
   annual: {
@@ -40,6 +41,7 @@ export default function BillingPage() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [clientSecret, setClientSecret] = useState(null);
   const [isLoadingSetupIntent, setIsLoadingSetupIntent] = useState(false);
+  const { convertPrice } = useCurrency();
 
   useEffect(() => {
     fetch("/api/stripe/get-payment-methods")
@@ -165,9 +167,8 @@ export default function BillingPage() {
       <div className="flex justify-center items-center gap-4 mb-12">
         <div className="flex items-center gap-2">
           <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-              step >= 1 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
-            }`}
+            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${step >= 1 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
+              }`}
           >
             1
           </div>
@@ -184,9 +185,8 @@ export default function BillingPage() {
         />
         <div className="flex items-center gap-2">
           <div
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-              step === 2 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
-            }`}
+            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${step === 2 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-500"
+              }`}
           >
             2
           </div>
@@ -214,11 +214,10 @@ export default function BillingPage() {
             {/* Annual Plan */}
             <div
               onClick={() => togglePlan(plans.annual)}
-              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
-                selectedPlan?.name === "Annual"
+              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${selectedPlan?.name === "Annual"
                   ? "border-red-600 bg-red-50/30 shadow-sm"
                   : "border-gray-200 bg-white hover:border-red-200 hover:shadow-md"
-              }`}
+                }`}
             >
               <div className="absolute -top-3 right-6">
                 <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
@@ -248,17 +247,17 @@ export default function BillingPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-gray-400 text-xs line-through mb-1">
-                    $5.00/mo
+                    {convertPrice(5)}/mo
                   </div>
                   <span className="text-2xl font-bold text-gray-900">
-                    {plans.annual.perMonth}
+                    {convertPrice(4)}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
                     /mo
                   </span>
                   <p className="text-gray-600 text-xs mt-1">
-                    {plans.annual.price} per year
+                    {convertPrice(50)}/ billed annually
                   </p>
                 </div>
               </div>
@@ -267,11 +266,10 @@ export default function BillingPage() {
             {/* Monthly Plan */}
             <div
               onClick={() => togglePlan(plans.monthly)}
-              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${
-                selectedPlan?.name === "Monthly"
+              className={`relative group cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 ${selectedPlan?.name === "Monthly"
                   ? "border-red-600 bg-red-50/30 shadow-sm"
                   : "border-gray-200 bg-white hover:border-red-200 hover:shadow-md"
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -289,7 +287,7 @@ export default function BillingPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-bold text-gray-900">
-                    {plans.monthly.perMonth}
+                    {convertPrice(5)}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
@@ -327,10 +325,10 @@ export default function BillingPage() {
                   <div>
                     <h3 className="text-lg font-bold">{selectedPlan.name}</h3>
                     <p className="text-gray-500">
-                      {selectedPlan.perMonth}/mo • {selectedPlan.billing}
+                      {convertPrice(Number(selectedPlan.perMonth.replace(/[^0-9.]/g, "")))}/mo • {selectedPlan.billing}
                     </p>
                     <p className="text-gray-900 font-semibold mt-1">
-                      {selectedPlan.price} due today
+                      {convertPrice(Number(selectedPlan.price.replace(/[^0-9.]/g, "")))} due today
                     </p>
                   </div>
                   <div className="text-right">
@@ -360,11 +358,10 @@ export default function BillingPage() {
                         {savedMethods.map((method) => (
                           <div
                             key={method.id}
-                            className={`flex items-center space-x-2 border p-3 rounded-md transition-colors cursor-pointer ${
-                              selectedMethod === method.id
+                            className={`flex items-center space-x-2 border p-3 rounded-md transition-colors cursor-pointer ${selectedMethod === method.id
                                 ? "border-red-500 bg-red-50"
                                 : "border-gray-200"
-                            }`}
+                              }`}
                             onClick={() => setSelectedMethod(method.id)}
                           >
                             <RadioGroupItem value={method.id} id={method.id} />

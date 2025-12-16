@@ -6,11 +6,13 @@ import { Calendar, Users, Loader2, Lock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 
 const FALLBACK_IMAGE = "/beachvilla.jpg";
 
 export default function BookingCard({ booking, isPremium, onViewReceipt }) {
   const [isCancelling, setIsCancelling] = useState(false);
+  const { convertPrice } = useCurrency();
 
   const isValidUrl = (s) => {
     if (!s) return false; // null or undefined
@@ -130,7 +132,7 @@ export default function BookingCard({ booking, isPremium, onViewReceipt }) {
           {/* Price Section */}
           <div>
             <p className="text-lg font-bold text-gray-900">
-              ${Number(booking.price).toLocaleString()}
+              {convertPrice(Number(booking.price))}
             </p>
           </div>
 

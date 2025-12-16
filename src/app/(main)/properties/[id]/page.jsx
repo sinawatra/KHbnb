@@ -2,6 +2,7 @@
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/contexts/AuthContext";
+import { useCurrency } from "@/components/contexts/CurrencyContext";
 import Image from "next/image";
 import Searchbar from "@/components/Seachbar";
 import { Calendar } from "@/components/ui/calendar";
@@ -125,7 +126,7 @@ export default function PropertyDetailsPage({ params }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { profile } = useAuth();
-
+  const { convertPrice } = useCurrency();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState({ from: undefined, to: undefined });
@@ -364,7 +365,7 @@ export default function PropertyDetailsPage({ params }) {
             <div className="border rounded-xl p-6 shadow-lg sticky top-6 bg-white z-10">
               <div className="flex items-baseline gap-1 mb-4">
                 <span className="text-2xl font-semibold">
-                  ${property.price_per_night}
+                  {convertPrice(property.price_per_night)}
                 </span>
                 <span className="text-gray-600">per night</span>
               </div>
@@ -498,10 +499,9 @@ export default function PropertyDetailsPage({ params }) {
                 onClick={handleReserve}
                 disabled={!isValidDateRange}
                 className={`w-full py-3 rounded-lg font-semibold text-lg transition-all shadow-sm mb-4
-                  ${
-                    isValidDateRange
-                      ? "bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600"
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  ${isValidDateRange
+                    ? "bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }
                 `}
               >
@@ -519,25 +519,25 @@ export default function PropertyDetailsPage({ params }) {
                 <div className="space-y-2 text-sm border-t pt-4 text-gray-700">
                   <div className="flex justify-between">
                     <span className="underline decoration-gray-300 decoration-1 underline-offset-2">
-                      ${property.price_per_night} x {nights} nights
+                      {convertPrice(property.price_per_night)} x {nights} nights
                     </span>
-                    <span>${subtotal}</span>
+                    <span>{convertPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="underline decoration-gray-300 decoration-1 underline-offset-2">
                       Cleaning fee
                     </span>
-                    <span>${cleaningFee}</span>
+                    <span>{convertPrice(cleaningFee)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="underline decoration-gray-300 decoration-1 underline-offset-2">
                       Service fee
                     </span>
-                    <span>${serviceFee}</span>
+                    <span>{convertPrice(serviceFee)}</span>
                   </div>
                   <div className="flex justify-between font-bold pt-4 border-t border-gray-200 mt-4 text-base">
                     <span>Total</span>
-                    <span>${total}</span>
+                    <span>{convertPrice(total)}</span>
                   </div>
                 </div>
               ) : (
