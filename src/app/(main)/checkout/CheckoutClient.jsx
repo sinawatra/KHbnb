@@ -12,6 +12,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { useCurrency } from "@/components/contexts/CurrencyContext";
+import { encryptData } from "@/lib/crypto";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -108,7 +109,10 @@ function CheckoutForm({ bookingData }) {
       const bookingJson = await bookingRes.json();
       const myBookingId = bookingJson.booking.id;
 
-      // 5. Charge New Card on the Server (pass PM ID)
+      // 5. Encrypt Payment Data
+      const encryptedData = await encryptData(bookingData.total.toString());
+
+      // 6. Charge New Card on the Server (pass PM ID)
       const chargeRes = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,6 +121,7 @@ function CheckoutForm({ bookingData }) {
           paymentMethodId: paymentMethod.id,
           total: bookingData.total,
           bookingId: myBookingId,
+          encryptedPaymentData: encryptedData,
         }),
       });
 
@@ -183,11 +188,13 @@ function StripePaymentForm({ bookingData }) {
           if (data.clientSecret) {
             setClientSecret(data.clientSecret);
           } else {
-            setMessage("Error loading payment form.");
+            console.error("Payment intent error:", data);
+            setMessage(data.error || "Error loading payment form (no client secret).");
           }
         })
-        .catch(() => {
-          setMessage("Error loading payment form.");
+        .catch((err) => {
+          console.error("Fetch error:", err);
+          setMessage(`Error loading payment form: ${err.message}`);
         });
     }
   }, [bookingData]);
@@ -360,7 +367,10 @@ export default function CheckoutPage() {
       const bookingJson = await bookingRes.json();
       const myBookingId = bookingJson.booking.id;
 
-      // B. Charge Saved Card
+      // B. Encrypt Payment Data
+      const encryptedData = await encryptData(bookingData.total.toString());
+
+      // C. Charge Saved Card
       const response = await fetch("/api/stripe/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -368,6 +378,7 @@ export default function CheckoutPage() {
           paymentMethodId: selectedCardId,
           total: bookingData.total,
           bookingId: myBookingId,
+          encryptedPaymentData: encryptedData,
         }),
       });
 

@@ -100,7 +100,7 @@ export default function AuthForm() {
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className={loginError ? "border-red-500 pr-10" : "pr-10"}
                       required
-                    />
+                  />
                     <button
                       type="button"
                       onClick={() => setShowLoginPassword(!showLoginPassword)}
