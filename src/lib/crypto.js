@@ -1,5 +1,5 @@
 export async function encryptData(data) {
-  const passphrase = process.env.PASSPHRASE
+  const passphrase = process.env.NEXT_PUBLIC_PASSPHRASE;
   const encoder = new TextEncoder();
 
   // 1. Generate a random salt
