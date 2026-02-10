@@ -9,7 +9,9 @@ import {
   ArrowRightLeft,
   Check,
   CircleDollarSign,
+  Globe,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "./contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +25,7 @@ import { useState, useEffect } from "react";
 import { useCurrency } from "./contexts/CurrencyContext";
 
 export default function TopNavBar() {
+  const { t, i18n } = useTranslation();
   const { profile, loading, logout } = useAuth();
   const { currency, setCurrency } = useCurrency();
   const router = useRouter();
@@ -49,7 +52,32 @@ export default function TopNavBar() {
             KHbnb
           </Link>
         </div>
+                  {/* <LayoutTextFlipDemo /> */}
         <div className="flex gap-4 items-center mr-6">
+
+          {/* --- LANGUAGE SWITCHER START --- */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                aria-label="Change Language"
+              >
+                <Globe className="w-4 h-4 text-gray-500" />
+                <span className="uppercase">{i18n.language}</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => i18n.changeLanguage("en")} className="cursor-pointer justify-between">
+                <span>English</span>
+                {i18n.language === "en" && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => i18n.changeLanguage("km")} className="cursor-pointer justify-between">
+                <span>Khmer</span>
+                {i18n.language === "km" && <Check className="h-4 w-4" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {/* --- LANGUAGE SWITCHER END --- */}
 
           {/* --- CURRENCY SWITCHER START --- */}
           <DropdownMenu>
@@ -81,7 +109,7 @@ export default function TopNavBar() {
             href="/properties"
             className="flex p-2 items-center space-x-2 font-medium text-gray-800 hover:text-primary hover:cursor-pointer"
           >
-            Find property
+            {t("nav.find_property")}
           </Link>
 
           {profile ? (
@@ -102,25 +130,25 @@ export default function TopNavBar() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer">
                     <UserRoundPen className="mr-2 h-4 w-4" />
-                    Profile
+                    {t("nav.profile")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/subscription" className="cursor-pointer">
                     <CircleDollarSign className="mr-2 h-4 w-4" />
-                    Subscription
+                    {t("nav.subscription")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/payment" className="cursor-pointer">
                     <CreditCard className="mr-2 h-4 w-4" />
-                    Payment
+                    {t("nav.payment")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/booking-history" className="cursor-pointer">
                     <Calendar className="mr-2 h-4 w-4" />
-                    Booking History
+                    {t("nav.bookings")}
                   </Link>
                 </DropdownMenuItem>
 
@@ -130,7 +158,7 @@ export default function TopNavBar() {
                   className="cursor-pointer text-primary"
                 >
                   <LogOut className="mr-2 h-4 w-4 text-primary" />
-                  Logout
+                  {t("nav.logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -139,7 +167,7 @@ export default function TopNavBar() {
               href="/register"
               className="rounded-4xl bg-primary px-6 py-2 text-sm font-semibold text-white hover:shadow-lg transition-all"
             >
-              Login
+              {t("nav.login")}
             </Link>
           )}
         </div>

@@ -18,6 +18,7 @@ import {
 } from "./ui/command";
 import { Button } from "./ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 const provinces = [
   "Phnom Penh",
@@ -29,6 +30,7 @@ const provinces = [
 ];
 
 function SearchBarContent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -46,7 +48,7 @@ function SearchBarContent() {
   const totalGuests = adults + children + infants;
 
   const formatDate = (dateObj) => {
-    if (!dateObj) return "Add dates";
+    if (!dateObj) return t("search.add_dates");
     return dateObj.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -79,9 +81,9 @@ const handleSearch = () => {
           <div className="flex-1 px-6 py-3 border-r flex items-center gap-3 cursor-pointer">
             <FlagTriangleRight />
             <div className="flex flex-col">
-              <label className="font-semibold text-xs">Where to?</label>
+              <label className="font-semibold text-xs">{t("search.where_to")}</label>
               <input
-                placeholder="Search destinations"
+                placeholder={t("search.search_destinations")}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="outline-none text-sm text-gray-600"
@@ -95,9 +97,9 @@ const handleSearch = () => {
           className="w-[300px] p-0"
         >
           <Command>
-            <CommandInput placeholder="Search provinces..." />
+            <CommandInput placeholder={t("search.search_provinces")} />
             <CommandList>
-              <CommandEmpty>No province found.</CommandEmpty>
+              <CommandEmpty>{t("search.no_province_found")}</CommandEmpty>
               <CommandGroup heading="Provinces">
                 {provinces.map((province) => (
                   <CommandItem
@@ -122,7 +124,7 @@ const handleSearch = () => {
           <button className="flex-1 px-6 py-3 border-r flex items-center gap-3">
             <CalendarIcon />
             <div className="flex flex-col text-left">
-              <label className="font-semibold text-xs">Check in</label>
+              <label className="font-semibold text-xs">{t("search.check_in")}</label>
               <p className="text-sm text-gray-600">{formatDate(date?.from)}</p>
             </div>
           </button>
@@ -151,7 +153,7 @@ const handleSearch = () => {
           <button className="flex-1 px-6 py-3 border-r flex items-center gap-3">
             <CalendarIcon />
             <div className="flex flex-col text-left">
-              <label className="font-semibold text-xs">Check out</label>
+              <label className="font-semibold text-xs">{t("search.check_out")}</label>
               <p className="text-sm text-gray-600">{formatDate(date?.to)}</p>
             </div>
           </button>
@@ -180,11 +182,11 @@ const handleSearch = () => {
           <button className="px-6 py-3 flex items-center gap-3 whitespace-nowrap">
             <UsersRound className="w-5 h-5" />
             <div className="flex flex-col text-left">
-              <label className="font-semibold text-xs">Add guests</label>
+              <label className="font-semibold text-xs">{t("search.add_guests")}</label>
               <p className="text-sm text-gray-600">
                 {totalGuests > 0
-                  ? `${totalGuests} guest${totalGuests > 1 ? "s" : ""}`
-                  : "Add guests"}
+                  ? t("search.guest_count_plural", { count: totalGuests })
+                  : t("search.add_guests")}
               </p>
             </div>
           </button>
@@ -200,8 +202,8 @@ const handleSearch = () => {
             {/* Adults */}
             <div className="border-b flex justify-between items-center pb-4 mb-4">
               <div>
-                <p className="font-semibold">Adult</p>
-                <p className="text-sm text-gray-500">Ages 13+</p>
+                <p className="font-semibold">{t("search.adults")}</p>
+                <p className="text-sm text-gray-500">{t("search.adults_desc")}</p>
               </div>
               <div className="flex items-center gap-4">
                 <button
@@ -224,8 +226,8 @@ const handleSearch = () => {
             {/* Children */}
             <div className="border-b flex justify-between items-center pb-4 mb-4">
               <div>
-                <p className="font-semibold">Children</p>
-                <p className="text-sm text-gray-500">Ages 2-12</p>
+                <p className="font-semibold">{t("search.children")}</p>
+                <p className="text-sm text-gray-500">{t("search.children_desc")}</p>
               </div>
               <div className="flex items-center gap-4">
                 <button
@@ -248,8 +250,8 @@ const handleSearch = () => {
             {/* Infants */}
             <div className="flex justify-between items-center pb-4">
               <div>
-                <p className="font-semibold">Infants</p>
-                <p className="text-sm text-gray-500">Under 2</p>
+                <p className="font-semibold">{t("search.infants")}</p>
+                <p className="text-sm text-gray-500">{t("search.infants_desc")}</p>
               </div>
               <div className="flex items-center gap-4">
                 <button

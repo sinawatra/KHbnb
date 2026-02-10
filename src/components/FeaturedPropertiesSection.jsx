@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import FeaturedProductCard from "@/components/FeaturedProductCard";
+import { useTranslation } from "react-i18next";
 
 export default function FeaturedPropertiesSection() {
+  const { t } = useTranslation();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,18 +24,18 @@ export default function FeaturedPropertiesSection() {
   }, []);
 
   if (loading)
-    return <div className="p-6 text-center">Loading properties...</div>;
+    return <div className="p-6 text-center">{t("featured.loading")}</div>;
 
   return (
     <section className="p-6">
       <div className="flex justify-between p-5">
         <div className="text-left">
-          <h1 className="font-bold text-2xl">Featured Properties</h1>
-          <h2>Handpicked stays for your next adventure</h2>
+          <h1 className="font-bold text-2xl">{t("featured.title")}</h1>
+          <h2>{t("featured.subtitle")}</h2>
         </div>
         <Link href="/properties" passHref>
           <Button variant="outline" className="mt-4 mb-4 bg-white">
-            View All
+            {t("featured.view_all")}
           </Button>
         </Link>
       </div>

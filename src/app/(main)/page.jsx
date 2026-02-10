@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useTranslation } from "react-i18next";
 
 const Searchbar = dynamic(() => import("@/components/Seachbar"), {
   loading: () => <div className="w-full max-w-5xl h-16 bg-gray-100 rounded-full animate-pulse" />,
@@ -11,6 +14,8 @@ const FeaturedPropertiesSection = dynamic(() => import("@/components/FeaturedPro
 const Footer = dynamic(() => import("@/components/Footer"));
 
 export default function Home() {
+  const { t } = useTranslation();
+
   return (
     <>
       <main>
@@ -53,11 +58,10 @@ export default function Home() {
             <div className="flex-1 self-center">
               <div className="w-full flex flex-col items-center">
                 <h1 className="font-bold text-amber-600 text-4xl mb-4 !text-center w-2/3">
-                  Find Your Perfect Home Away From Home
+                  {t("home.hero_title")}
                 </h1>
                 <p className="font-bold text-gray-600 text-lg !text-center w-2/3">
-                  Discover unique properties across Cambodia. From Beachfront,
-                  villas to city apartments
+                  {t("home.hero_subtitle")}
                 </p>
               </div>
             </div>

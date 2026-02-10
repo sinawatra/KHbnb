@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "find_property": "Find property",
+    "logout": "Log out",
+    "profile": "Profile",
+    "bookings": "Booking History",
+    "subscription": "Subscription",
+    "payment": "Payment",
+    "login": "Login",
+    "language": "Language",
+    "currency": "Currency"
+  },
+  "footer": {
+    "tagline": "Your trusted partner for property rentals in Cambodia",
+    "province": "Province",
+    "copyright": "© 2025 KHbnb. All rights reserved."
+  },
+  "provinces": {
+    "siem_reap": "Siem Reap",
+    "kep": "Kep",
+    "kampot": "Kampot",
+    "sihanouk_ville": "Sihanouk Ville",
+    "phnom_penh": "Phnom Penh"
+  },
+  "home": {
+    "hero_title": "Find Your Perfect Home Away From Home",
+    "hero_subtitle": "Discover unique properties across Cambodia. From Beachfront, villas to city apartments"
+  },
+  "search": {
+    "where_to": "Where to?",
+    "search_destinations": "Search destinations",
+    "search_provinces": "Search provinces...",
+    "no_province_found": "No province found.",
+    "check_in": "Check in",
+    "check_out": "Check out",
+    "add_dates": "Add dates",
+    "add_guests": "Add guests",
+    "guest_count": "{{count}} guest",
+    "guest_count_plural": "{{count}} guests",
+    "adults": "Adults",
+    "adults_desc": "Ages 13+",
+    "children": "Children",
+    "children_desc": "Ages 2-12",
+    "infants": "Infants",
+    "infants_desc": "Under 2"
+  },
+  "featured": {
+    "title": "Featured Properties",
+    "subtitle": "Handpicked stays for your next adventure",
+    "view_all": "View All",
+    "loading": "Loading properties..."
+  }
+}
