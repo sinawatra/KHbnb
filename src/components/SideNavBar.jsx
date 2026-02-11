@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -16,6 +17,7 @@ import {
   CircleDollarSign,
   CreditCard,
   Calendar,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
 
@@ -47,15 +49,14 @@ export default function SideNavBar() {
   const { logout } = useAuth();
 
   return (
-    <div>
-      <Sidebar
-        collapsible="none"
-        className=" !relative !w-40 !h-full !bg-white"
-      >
-        <SidebarContent>
-          <SidebarGroup className="!m-0 !p-0">
+    <Sidebar
+      collapsible="none"
+      className="!relative !w-full !h-full !bg-white border-none"
+    >
+        <SidebarContent className="p-4">
+          <SidebarGroup className="!p-0">
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-2">
                 {items.map((item) => {
                   const isActive = pathname === item.url;
                   return (
@@ -63,16 +64,16 @@ export default function SideNavBar() {
                       <SidebarMenuButton
                         asChild
                         isActive={isActive}
-                        className={`flex-col items-center justify-center h-20 rounded-none ${
+                        className={`flex items-center gap-3 px-3 h-11 rounded-lg transition-all duration-200 ${
                           isActive
-                            ? "bg-red-50 border-r-4 border-primary !text-primary font-semibold"
-                            : ""
+                            ? "bg-primary/10 !text-primary font-semibold"
+                            : "hover:bg-gray-100 text-gray-600"
                         }`}
                       >
-                        <a href={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </a>
+                        <Link href={item.url} className="flex items-center gap-3 w-full">
+                          <item.icon className={`size-5 ${isActive ? "text-primary" : "text-gray-500"}`} />
+                          <span className="text-sm">{item.title}</span>
+                        </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   );
@@ -81,10 +82,10 @@ export default function SideNavBar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="p-4 border-t">
           <Button
-            variant="outline"
-            className="w-full rounded-none"
+            variant="ghost"
+            className="w-full justify-start gap-3 px-3 h-11 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
             onClick={async () => {
               await fetch("/api/auth/logout", {
                 method: "POST",
@@ -93,10 +94,10 @@ export default function SideNavBar() {
               window.location.href = "/";
             }}
           >
-            Logout
+            <LogOut className="size-5" />
+            <span className="text-sm font-medium">Logout</span>
           </Button>
         </SidebarFooter>
       </Sidebar>
-    </div>
-  );
-}
+    );
+  }

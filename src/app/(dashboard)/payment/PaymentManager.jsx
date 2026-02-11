@@ -116,7 +116,14 @@ export default function PaymentManager() {
   };
 
   if (isLoading && view === "list") {
-    return <div className="max-w-xl mx-auto p-8">Loading methods...</div>;
+    return (
+      <div className="flex h-[60vh] w-full items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-gray-500 font-medium">Loading methods...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -208,7 +215,12 @@ export default function PaymentManager() {
       )}
 
       {view === "loading" && (
-        <div className="border-t pt-4">Loading form...</div>
+        <div className="flex h-[60vh] w-full items-center justify-center">
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-gray-500 font-medium">Loading form...</p>
+      </div>
+    </div>
       )}
     </div>
   );

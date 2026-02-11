@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
 
       <div className="flex flex-1 overflow-hidden border-t">
         <SidebarProvider>
-          <aside className="hidden !w-40 flex-col border-r bg-white md:flex">
+          <aside className="hidden !w-60 flex-col border-r bg-white md:flex">
             <SideNavBar />
           </aside>
 

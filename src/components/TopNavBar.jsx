@@ -46,7 +46,7 @@ export default function TopNavBar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
-      <nav className="flex items-center justify-between px-4 py-3 max-w-7xl mx-auto">
+      <nav className="flex items-center justify-between px-4 py-3 w-full">
         <div className="flex-shrink-0">
           <Link href="/" className="text-2xl font-bold text-primary tracking-tight hover:opacity-90 transition-opacity">
             KHbnb

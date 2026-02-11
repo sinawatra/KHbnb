@@ -64,7 +64,14 @@ export default function BookingHistory() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
-  if (loading) return <div className="pl-4 pt-10">Loading history...</div>;
+  if (loading) return (
+    <div className="flex h-[60vh] w-full items-center justify-center">
+      <div className="flex flex-col items-center gap-2">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-gray-500 font-medium">Loading history...</p>
+      </div>
+    </div>
+  );
   if (error)
     return <div className="pl-4 pt-10 text-red-500">Error: {error}</div>;
 
