@@ -171,9 +171,11 @@ export default function ProfilePage() {
             </div>
             <div className="flex gap-3 mt-6">
               <DialogClose asChild>
-                <Button variant="outline" className="flex-1">
+                <Button
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-black"
+              >
                   Cancel
-                </Button>
+              </Button>
               </DialogClose>
               <Button
                 onClick={handleUpdateProfile}
