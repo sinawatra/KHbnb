@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import BookingCard from "@/components/BookingCard";
 import ReceiptModal from "@/components/ReceiptModal";
 import { useAuth } from "@/components/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 export default function BookingHistory() {
   const { user, isPremium } = useAuth();
@@ -11,6 +12,7 @@ export default function BookingHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -68,7 +70,7 @@ export default function BookingHistory() {
     <div className="flex h-[60vh] w-full items-center justify-center">
       <div className="flex flex-col items-center gap-2">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <p className="text-gray-500 font-medium">Loading history...</p>
+        <p className="text-gray-500 font-medium">{t("booking_history.loading")}</p>
       </div>
     </div>
   );
@@ -78,15 +80,15 @@ export default function BookingHistory() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
       <div className="mb-8">
-        <h1 className="font-bold text-3xl text-gray-900">Booking History</h1>
+        <h1 className="font-bold text-3xl text-gray-900">{t("booking_history.title")}</h1>
         <p className="text-gray-500 mt-2">
-          View your past trips and payment receipts.
+          {t("booking_history.subtitle")}
         </p>
       </div>
 
       {bookings.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-          <p className="text-gray-500 text-lg">You have no bookings yet.</p>
+          <p className="text-gray-500 text-lg">{t("booking_history.no_bookings")}</p>
         </div>
       ) : (
         <div className="space-y-4">

@@ -25,10 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/components/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, profile, loading, logout, fetchUserProfile } = useAuth();
+  const { t } = useTranslation();
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -53,9 +55,9 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
-  if (loading) return <div className="p-4">Loading profile...</div>;
+  if (loading) return <div className="p-4">{t("profile.loading")}</div>;
   if (!user) return null;
-  if (!profile) return <div className="p-4">Error loading profile data.</div>;
+  if (!profile) return <div className="p-4">{t("profile.error_loading")}</div>;
 
   const handleImageUpload = async () => {
     if (!selectedFile) return;
@@ -98,7 +100,7 @@ export default function ProfilePage() {
       if (data.success) {
         await fetchUserProfile();
         setIsEditDialogOpen(false);
-        alert("Profile updated successfully!");
+        alert(t("profile.profile_updated"));
       } else {
         alert("Update failed: " + (data.error || "Unknown error"));
       }
@@ -134,38 +136,38 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="font-bold text-3xl">Profile</h1>
+        <h1 className="font-bold text-3xl">{t("profile.title")}</h1>
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" className="gap-2">
               <Edit2 className="h-4 w-4" />
-              Edit Profile
+              {t("profile.edit_profile")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Profile</DialogTitle>
+              <DialogTitle>{t("profile.edit_profile")}</DialogTitle>
               <DialogDescription>
-                Update your name and phone number
+                {t("profile.update_name_phone")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="fullName">{t("profile.full_name")}</Label>
                 <Input
                   id="fullName"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter your full name"
+                  placeholder={t("profile.full_name_placeholder")}
                 />
               </div>
               <div>
-                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Label htmlFor="phoneNumber">{t("profile.phone_number")}</Label>
                 <Input
                   id="phoneNumber"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Enter your phone number"
+                  placeholder={t("profile.phone_placeholder")}
                 />
               </div>
             </div>
@@ -174,7 +176,7 @@ export default function ProfilePage() {
                 <Button
                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-black"
               >
-                  Cancel
+                  {t("profile.cancel")}
               </Button>
               </DialogClose>
               <Button
@@ -185,10 +187,10 @@ export default function ProfilePage() {
                 {isUpdating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    {t("profile.updating")}
                   </>
                 ) : (
-                  "Save Changes"
+                  t("profile.save_changes")
                 )}
               </Button>
             </div>
@@ -200,7 +202,7 @@ export default function ProfilePage() {
       <Card className="mb-6">
         <CardContent className="p-6">
           <h3 className="text-sm font-semibold text-gray-500 mb-4">
-            PROFILE PHOTO
+            {t("profile.profile_photo")}
           </h3>
           <Dialog
             open={isAvatarDialogOpen}
@@ -224,7 +226,7 @@ export default function ProfilePage() {
                   <div className="text-center">
                     <Camera className="w-8 h-8 text-white mx-auto mb-1" />
                     <p className="text-white text-sm font-semibold">
-                      Change Photo
+                      {t("profile.change_photo")}
                     </p>
                   </div>
                 </div>
@@ -232,9 +234,9 @@ export default function ProfilePage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Update Profile Photo</DialogTitle>
+                <DialogTitle>{t("profile.update_photo")}</DialogTitle>
                 <DialogDescription>
-                  Choose a new profile picture
+                  {t("profile.choose_photo")}
                 </DialogDescription>
               </DialogHeader>
               <Input
@@ -251,10 +253,10 @@ export default function ProfilePage() {
                 {uploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
-                    Uploading...
+                    {t("profile.uploading")}
                   </>
                 ) : (
-                  "Save Change"
+                  t("profile.save_change")
                 )}
               </Button>
             </DialogContent>
@@ -266,7 +268,7 @@ export default function ProfilePage() {
       <Card className="mb-6">
         <CardContent className="p-6">
           <h3 className="text-sm font-semibold text-gray-500 mb-6">
-            PERSONAL INFORMATION
+            {t("profile.personal_info")}
           </h3>
 
           <div className="space-y-6">
@@ -274,9 +276,9 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3 pb-4 border-b">
               <Edit2 className="h-5 w-5 text-gray-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">Name</p>
+                <p className="text-sm text-gray-500 mb-1">{t("profile.name")}</p>
                 <p className="font-semibold text-gray-900">
-                  {profile.full_name || "Not set"}
+                  {profile.full_name || t("profile.not_set")}
                 </p>
               </div>
             </div>
@@ -285,7 +287,7 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3 pb-4 border-b">
               <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">Email</p>
+                <p className="text-sm text-gray-500 mb-1">{t("profile.email")}</p>
                 <p className="font-semibold text-gray-900">{profile.email}</p>
               </div>
             </div>
@@ -294,8 +296,8 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3 pb-4 border-b">
               <Globe className="h-5 w-5 text-gray-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">Country</p>
-                <p className="font-semibold text-gray-900">Cambodia</p>
+                <p className="text-sm text-gray-500 mb-1">{t("profile.country")}</p>
+                <p className="font-semibold text-gray-900">{t("profile.cambodia")}</p>
               </div>
             </div>
 
@@ -303,9 +305,9 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3">
               <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm text-gray-500 mb-1">Phone Number</p>
+                <p className="text-sm text-gray-500 mb-1">{t("profile.phone_number")}</p>
                 <p className="font-semibold text-gray-900">
-                  {profile.phone_number || "Not set"}
+                  {profile.phone_number || t("profile.not_set")}
                 </p>
               </div>
             </div>
@@ -320,26 +322,24 @@ export default function ProfilePage() {
             <Trash2 className="h-5 w-5 text-red-600 mt-1" />
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-1">
-                Delete Account
+                {t("profile.delete_account")}
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                This account will no longer be available, and all your saved
-                data will be permanently deleted.
+                {t("profile.delete_account_desc")}
               </p>
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="destructive" size="sm">
-                    Delete Account
+                    {t("profile.delete_account")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle className="text-center text-lg">
-                      Delete account associated with <b>{profile.email}</b>?
+                      {t("profile.delete_confirm")} <b>{profile.email}</b>?
                     </DialogTitle>
                     <DialogDescription className="text-center pt-2">
-                      This action cannot be undone. All your data will be
-                      permanently deleted.
+                      {t("profile.delete_warning")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex flex-col gap-3 mt-4">
@@ -353,10 +353,10 @@ export default function ProfilePage() {
                       {deleting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
+                          {t("profile.deleting")}
                         </>
                       ) : (
-                        "Yes, delete my account"
+                        t("profile.yes_delete")
                       )}
                     </Button>
                     <DialogClose asChild>
@@ -366,7 +366,7 @@ export default function ProfilePage() {
                         disabled={deleting}
                         className="w-full"
                       >
-                        Cancel
+                        {t("profile.cancel")}
                       </Button>
                     </DialogClose>
                   </div>

@@ -7,13 +7,15 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
-import { Shield } from "lucide-react"; // Optional icon
+import { Shield } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 );
 
 export default function PaymentManager() {
+  const { t } = useTranslation();
   const [view, setView] = useState("list");
   const [savedMethods, setSavedMethods] = useState([]);
   const [activePaymentMethodId, setActivePaymentMethodId] = useState(null);
@@ -84,7 +86,7 @@ export default function PaymentManager() {
   };
 
   const handleDeleteCard = async (paymentMethodId) => {
-    if (!confirm("Are you sure you want to remove this payment method?")) {
+    if (!confirm(t("payment.confirm_remove"))) {
       return;
     }
 
@@ -106,7 +108,7 @@ export default function PaymentManager() {
         currentMethods.filter((method) => method.id !== paymentMethodId)
       );
 
-      alert("Card removed successfully.");
+      alert(t("payment.card_removed"));
     } catch (error) {
       console.error(error);
       alert(error.message);
@@ -120,7 +122,7 @@ export default function PaymentManager() {
       <div className="flex h-[60vh] w-full items-center justify-center">
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-gray-500 font-medium">Loading methods...</p>
+          <p className="text-gray-500 font-medium">{t("payment.loading_methods")}</p>
         </div>
       </div>
     );
@@ -128,21 +130,21 @@ export default function PaymentManager() {
 
   return (
     <div className="max-w-xl mx-auto p-8">
-      <h1 className="text-3xl font-semibold mb-2">Payment Methods</h1>
+      <h1 className="text-3xl font-semibold mb-2">{t("payment.title")}</h1>
       <p className="text-gray-600 mb-6">
-        Securely add or remove payment methods to make it easier when you book.
+        {t("payment.subtitle")}
       </p>
 
       {/* --- VIEW 1: LIST CARDS --- */}
       {view === "list" && (
         <div className="border-t">
           <div className="flex justify-between items-center py-4">
-            <h2 className="text-gray-500">Payment cards</h2>
+            <h2 className="text-gray-500">{t("payment.payment_cards")}</h2>
             <button
               onClick={handleShowAddCard}
               className="font-medium text-red-600 hover:text-red-700"
             >
-              Add Card
+              {t("payment.add_card")}
             </button>
           </div>
           <div className="space-y-3 bg-white rounded-lg">
@@ -167,19 +169,19 @@ export default function PaymentManager() {
                           {isActiveCard && (
                             <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">
                               <Shield className="h-3 w-3" />
-                              Active Subscription
+                              {t("payment.active_subscription")}
                             </span>
                           )}
                         </div>
                         <span className="text-gray-500 text-sm">
-                          Expires {method.card.exp_month}/{method.card.exp_year}
+                          {t("payment.expires")} {method.card.exp_month}/{method.card.exp_year}
                         </span>
                       </div>
                     </div>
 
                     {isActiveCard ? (
                       <span className="text-xs text-gray-500 italic">
-                        Cannot delete
+                        {t("payment.cannot_delete")}
                       </span>
                     ) : (
                       <button
@@ -187,7 +189,7 @@ export default function PaymentManager() {
                         disabled={isDeleting === method.id}
                         className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
                       >
-                        {isDeleting === method.id ? "Deleting..." : "Delete"}
+                        {isDeleting === method.id ? t("payment.deleting") : t("payment.delete")}
                       </button>
                     )}
                   </div>
@@ -195,7 +197,7 @@ export default function PaymentManager() {
               })
             ) : (
               <p className="text-gray-500 p-4">
-                You have no saved payment methods.
+                {t("payment.no_methods")}
               </p>
             )}
           </div>
@@ -218,7 +220,7 @@ export default function PaymentManager() {
         <div className="flex h-[60vh] w-full items-center justify-center">
       <div className="flex flex-col items-center gap-2">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <p className="text-gray-500 font-medium">Loading form...</p>
+        <p className="text-gray-500 font-medium">{t("payment.loading_form")}</p>
       </div>
     </div>
       )}
@@ -228,6 +230,7 @@ export default function PaymentManager() {
 
 // --- Inner Form Component ---
 function AddCardForm({ onCancel, onSuccess }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const [message, setMessage] = useState(null);
@@ -263,14 +266,14 @@ function AddCardForm({ onCancel, onSuccess }) {
           className="font-medium text-gray-700"
           disabled={isProcessing}
         >
-          Cancel
+          {t("payment.cancel")}
         </button>
         <button
           disabled={isProcessing || !stripe || !elements}
           type="submit"
           className="bg-red-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50"
         >
-          {isProcessing ? "Saving..." : "Save"}
+          {isProcessing ? t("payment.saving") : t("payment.save")}
         </button>
       </div>
       {message && <div className="text-red-500 mt-4">{message}</div>}

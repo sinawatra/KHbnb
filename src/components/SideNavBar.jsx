@@ -20,25 +20,26 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "./contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const items = [
   {
-    title: "Profile",
+    titleKey: "nav.profile",
     url: "/profile",
     icon: UserRoundPen,
   },
   {
-    title: "Subscription",
+    titleKey: "nav.subscription",
     url: "/subscription",
     icon: CircleDollarSign,
   },
   {
-    title: "Payment",
+    titleKey: "nav.payment",
     url: "/payment",
     icon: CreditCard,
   },
   {
-    title: "Booking History",
+    titleKey: "nav.bookings",
     url: "/booking-history",
     icon: Calendar,
   },
@@ -47,6 +48,7 @@ const items = [
 export default function SideNavBar() {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <Sidebar
@@ -60,7 +62,7 @@ export default function SideNavBar() {
                 {items.map((item) => {
                   const isActive = pathname === item.url;
                   return (
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key={item.titleKey}>
                       <SidebarMenuButton
                         asChild
                         isActive={isActive}
@@ -72,7 +74,7 @@ export default function SideNavBar() {
                       >
                         <Link href={item.url} className="flex items-center gap-3 w-full">
                           <item.icon className={`size-5 ${isActive ? "text-primary" : "text-gray-500"}`} />
-                          <span className="text-sm">{item.title}</span>
+                          <span className="text-sm">{t(item.titleKey)}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -95,7 +97,7 @@ export default function SideNavBar() {
             }}
           >
             <LogOut className="size-5" />
-            <span className="text-sm font-medium">Logout</span>
+            <span className="text-sm font-medium">{t("nav.logout")}</span>
           </Button>
         </SidebarFooter>
       </Sidebar>
