@@ -9,6 +9,8 @@ import { Loader2, Plus, CheckCircle2, Circle, CreditCard } from "lucide-react";
 import StripePaymentElementWrapper from "@/components/StripePaymentElementWrapper";
 import StripePaymentForm from "@/components/StripePaymentForm";
 import { useCurrency } from "@/components/contexts/CurrencyContext";
+// Option A: always render on request (SSR)
+export const dynamic = "force-dynamic";
 
 const plans = {
   annual: {

@@ -27,6 +27,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/components/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 
+export const dynamic = "force-dynamic";
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, profile, loading, logout, fetchUserProfile } = useAuth();

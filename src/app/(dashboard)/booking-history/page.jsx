@@ -6,6 +6,8 @@ import ReceiptModal from "@/components/ReceiptModal";
 import { useAuth } from "@/components/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 
+export const dynamic = "force-dynamic";
+
 export default function BookingHistory() {
   const { user, isPremium } = useAuth();
   const [bookings, setBookings] = useState([]);

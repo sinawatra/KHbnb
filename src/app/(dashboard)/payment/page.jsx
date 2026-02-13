@@ -4,6 +4,7 @@ import { Suspense } from "react";
 function LoadingUI() {
   return <div className="max-w-xl mx-auto p-8">Loading...</div>;
 }
+export const dynamic = "force-dynamic";
 
 export default function PaymentPage() {
   return (

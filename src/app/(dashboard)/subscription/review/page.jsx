@@ -12,6 +12,9 @@ const proFeatures = [
   "Book with no service fee",
 ];
 
+// Option A: always render on request (SSR)
+export const dynamic = "force-dynamic";
+
 export default function ReviewPage() {
   return (
     <section className="w-full max-w-4xl mx-auto py-12 md:py-24 px-4">
