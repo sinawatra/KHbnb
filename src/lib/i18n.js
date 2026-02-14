@@ -4,6 +4,8 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import HttpBackend from 'i18next-http-backend';
+import enCommon from '../../public/locales/en/common.json';
+import kmCommon from '../../public/locales/km/common.json';
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -23,7 +25,10 @@ i18n
     debug: false,
     resources: {
       en: {
-        common: {} // Provide empty object to prevent hangs during build
+        common: enCommon
+      },
+      km: {
+        common: kmCommon
       }
     },
     interpolation: {
