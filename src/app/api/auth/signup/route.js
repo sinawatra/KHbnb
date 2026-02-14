@@ -10,8 +10,32 @@ export async function POST(request) {
   if (!fullName || !email || !password) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Full name, email, and password are required." },
+      error: "Full name, email, and password are required.",
+    });
+  }
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  // Check if user already exists in public.users table to prevent duplicate key error
+  const { data: existingUser } = await supabaseAdmin
+    .from("users")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existingUser) {
+    return NextResponse.json({
+      success: false,
+      error: "An account with this email already exists. Please log in instead.",
     });
   }
 
@@ -31,8 +55,7 @@ export async function POST(request) {
   if (authError) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: authError.message },
+      error: authError.message,
     });
   }
 
@@ -40,8 +63,7 @@ export async function POST(request) {
   if (!user) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Signup failed, user not created." },
+      error: "Signup failed, user not created.",
     });
   }
 
@@ -61,21 +83,9 @@ export async function POST(request) {
     await supabase.auth.admin.deleteUser(user.id);
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Could not create billing profile." },
+      error: "Could not create billing profile.",
     });
   }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
 
   const { error: insertError } = await supabaseAdmin.from("users").insert({
     user_id: user.id,
@@ -94,8 +104,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Failed to link billing profile to user." },
+      error: "Failed to link billing profile to user.",
     });
   }
 

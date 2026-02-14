@@ -8,8 +8,7 @@ export async function POST(request) {
   if (!email || !password) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Email and password are required." },
+      error: "Email and password are required.",
     });
   }
 
@@ -24,8 +23,7 @@ export async function POST(request) {
   if (authError) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Invalid login credentials." },
+      error: "Invalid login credentials.",
     });
   }
 
@@ -38,8 +36,7 @@ export async function POST(request) {
   if (profileError || !profileData) {
     return NextResponse.json({
       success: false,
-      message: "error",
-      data: { details: "Could not find user profile." },
+      error: "Could not find user profile.",
     });
   }
   // if (profileData.role === "admin") {
