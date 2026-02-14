@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -12,27 +13,9 @@ import { useCurrency } from "@/components/contexts/CurrencyContext";
 // Option A: always render on request (SSR)
 export const dynamic = "force-dynamic";
 
-const plans = {
-  annual: {
-    priceId: "price_1SWDo53kW2gspTZHPxa68CMg",
-    name: "Annual",
-    price: "$50",
-    perMonth: "$4",
-    billing: "Billed annually",
-    badge: "save 10%",
-  },
-  monthly: {
-    priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
-    name: "Monthly",
-    price: "$5",
-    perMonth: "$5",
-    billing: "Billed monthly",
-    badge: null,
-  },
-};
-
 export default function BillingPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [savedMethods, setSavedMethods] = useState([]);
@@ -44,6 +27,25 @@ export default function BillingPage() {
   const [clientSecret, setClientSecret] = useState(null);
   const [isLoadingSetupIntent, setIsLoadingSetupIntent] = useState(false);
   const { convertPrice } = useCurrency();
+
+  const plans = {
+    annual: {
+      priceId: "price_1SWDo53kW2gspTZHPxa68CMg",
+      name: "Annual",
+      price: "$50",
+      perMonth: "$4",
+      billing: t("billing.billed_annually"),
+      badge: "save 10%",
+    },
+    monthly: {
+      priceId: "price_1SS94z3kW2gspTZHj3jBkH4a",
+      name: "Monthly",
+      price: "$5",
+      perMonth: "$5",
+      billing: t("billing.billed_monthly"),
+      badge: null,
+    },
+  };
 
   useEffect(() => {
     fetch("/api/stripe/get-payment-methods")
@@ -110,7 +112,7 @@ export default function BillingPage() {
 
   const handleSubscribe = async () => {
     if (!selectedPlan || !selectedMethod) {
-      setErrorMessage("Please select a plan and a payment method.");
+      setErrorMessage(t("billing.select_plan_method"));
       return;
     }
     setIsLoading(true);
@@ -132,9 +134,7 @@ export default function BillingPage() {
         res.status === 400 &&
         data.error?.message === "You already have an active subscription."
       ) {
-        alert(
-          "Good news! You were already subscribed. Syncing your account..."
-        );
+        alert(t("billing.already_subscribed"));
         router.refresh();
         router.push("/subscription");
         return;
@@ -146,7 +146,7 @@ export default function BillingPage() {
 
       await fetch("/api/user/subscription-status");
 
-      alert("Subscription successful!");
+      alert(t("billing.subscription_success"));
       router.refresh();
       router.push("/subscription");
     } catch (error) {
@@ -159,7 +159,7 @@ export default function BillingPage() {
     return (
       <div className="w-full max-w-2xl mx-auto py-12 text-center flex flex-col items-center gap-2">
         <Loader2 className="h-8 w-8 animate-spin text-red-600" />
-        <p>Loading payment details...</p>
+        <p>{t("billing.loading_payment")}</p>
       </div>
     );
   }
@@ -179,7 +179,7 @@ export default function BillingPage() {
               step >= 1 ? "font-semibold text-gray-900" : "text-gray-500"
             }
           >
-            Billing
+            {t("billing.step_billing")}
           </span>
         </div>
         <div
@@ -197,7 +197,7 @@ export default function BillingPage() {
               step === 2 ? "font-semibold text-gray-900" : "text-gray-500"
             }
           >
-            Review
+            {t("billing.step_review")}
           </span>
         </div>
       </div>
@@ -207,9 +207,9 @@ export default function BillingPage() {
         <>
           <div className="text-center mb-10">
             <h1 className="text-3xl font-bold text-gray-900">
-              Choose your billing cycle
+              {t("billing.choose_billing")}
             </h1>
-            <p className="text-gray-500 mt-2">Save money by billing annually</p>
+            <p className="text-gray-500 mt-2">{t("billing.save_annually")}</p>
           </div>
 
           <div className="space-y-4">
@@ -223,7 +223,7 @@ export default function BillingPage() {
             >
               <div className="absolute -top-3 right-6">
                 <span className="bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                  BEST VALUE
+                  {t("billing.best_value")}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -236,10 +236,10 @@ export default function BillingPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-bold text-gray-900">
-                        Annual
+                        {t("billing.annual")}
                       </h2>
                       <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-0.5 rounded">
-                        SAVE 10%
+                        {t("billing.save_10")}
                       </span>
                     </div>
                     <p className="text-gray-500 text-sm mt-1">
@@ -249,17 +249,17 @@ export default function BillingPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-gray-400 text-xs line-through mb-1">
-                    {convertPrice(5)}/mo
+                    {convertPrice(5)}{t("billing.per_month")}
                   </div>
                   <span className="text-2xl font-bold text-gray-900">
                     {convertPrice(4)}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
-                    /mo
+                    {t("billing.per_month")}
                   </span>
                   <p className="text-gray-600 text-xs mt-1">
-                    {convertPrice(50)}/ billed annually
+                    {t("billing.billed_annually_price", { price: convertPrice(50) })}
                   </p>
                 </div>
               </div>
@@ -281,7 +281,7 @@ export default function BillingPage() {
                     <Circle className="h-6 w-6 text-gray-300 group-hover:text-red-300" />
                   )}
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Monthly</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{t("billing.monthly")}</h2>
                     <p className="text-gray-500 text-sm mt-1">
                       {plans.monthly.billing}
                     </p>
@@ -293,7 +293,7 @@ export default function BillingPage() {
                   </span>
                   <span className="text-gray-500 text-sm font-medium">
                     {" "}
-                    /mo
+                    {t("billing.per_month")}
                   </span>
                 </div>
               </div>
@@ -306,7 +306,7 @@ export default function BillingPage() {
               disabled={!selectedPlan}
               className="bg-red-600 hover:bg-red-700 text-lg px-8 py-6"
             >
-              Continue to Review
+              {t("billing.continue_review")}
             </Button>
           </div>
         </>
@@ -316,21 +316,21 @@ export default function BillingPage() {
       {step === 2 && (
         <>
           <h1 className="text-3xl font-bold text-center mb-10">
-            Review and purchase
+            {t("billing.review_purchase")}
           </h1>
 
           <div className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-2">Selected Plan</h2>
+                <h2 className="text-xl font-semibold mb-2">{t("billing.selected_plan")}</h2>
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold">{selectedPlan.name}</h3>
                     <p className="text-gray-500">
-                      {convertPrice(Number(selectedPlan.perMonth.replace(/[^0-9.]/g, "")))}/mo • {selectedPlan.billing}
+                      {convertPrice(Number(selectedPlan.perMonth.replace(/[^0-9.]/g, "")))}{t("billing.per_month")} • {selectedPlan.billing}
                     </p>
                     <p className="text-gray-900 font-semibold mt-1">
-                      {convertPrice(Number(selectedPlan.price.replace(/[^0-9.]/g, "")))} due today
+                      {t("billing.due_today", { price: convertPrice(Number(selectedPlan.price.replace(/[^0-9.]/g, ""))) })}
                     </p>
                   </div>
                   <div className="text-right">
@@ -339,7 +339,7 @@ export default function BillingPage() {
                       className="h-auto p-0 text-red-600"
                       onClick={() => setStep(1)}
                     >
-                      Change
+                      {t("billing.change")}
                     </Button>
                   </div>
                 </div>
@@ -348,7 +348,7 @@ export default function BillingPage() {
 
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
+                <h2 className="text-xl font-semibold mb-4">{t("billing.payment_method")}</h2>
 
                 {savedMethods.length > 0 && !showAddCard ? (
                   <>
@@ -374,9 +374,9 @@ export default function BillingPage() {
                               <span className="font-medium capitalize">
                                 {method.card.brand}
                               </span>
-                              <span> ending in {method.card.last4}</span>
+                              <span> {t("billing.ending_in", { last4: method.card.last4 })}</span>
                               <span className="text-gray-500 ml-4 text-sm">
-                                Expires {method.card.exp_month}/
+                                {t("billing.expires")} {method.card.exp_month}/
                                 {method.card.exp_year}
                               </span>
                             </Label>
@@ -395,14 +395,14 @@ export default function BillingPage() {
                       ) : (
                         <Plus className="h-4 w-4" />
                       )}
-                      Add another card
+                      {t("billing.add_another_card")}
                     </Button>
                   </>
                 ) : showAddCard && clientSecret ? (
                   <div className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center gap-2 mb-4">
                       <CreditCard className="h-5 w-5 text-gray-600" />
-                      <h3 className="font-semibold">Add New Card</h3>
+                      <h3 className="font-semibold">{t("billing.add_new_card")}</h3>
                     </div>
                     <StripePaymentElementWrapper clientSecret={clientSecret}>
                       <StripePaymentForm
@@ -414,7 +414,7 @@ export default function BillingPage() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-gray-500 mb-4">
-                      You have no saved payment methods.
+                      {t("billing.no_saved_methods")}
                     </p>
                     <Button
                       onClick={handleAddCardClick}
@@ -427,7 +427,7 @@ export default function BillingPage() {
                       ) : (
                         <Plus className="mr-2 h-4 w-4" />
                       )}
-                      Add Payment Method
+                      {t("billing.add_payment_method")}
                     </Button>
                   </div>
                 )}
@@ -438,7 +438,7 @@ export default function BillingPage() {
               <>
                 <div className="flex justify-between items-center">
                   <Button variant="ghost" onClick={() => setStep(1)}>
-                    Back
+                    {t("billing.back")}
                   </Button>
                   <Button
                     onClick={handleSubscribe}
@@ -448,7 +448,7 @@ export default function BillingPage() {
                     {isLoading && (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     )}
-                    {isLoading ? "Processing..." : "Confirm & Subscribe"}
+                    {isLoading ? t("checkout.processing") : t("billing.confirm_subscribe")}
                   </Button>
                 </div>
                 {errorMessage && (

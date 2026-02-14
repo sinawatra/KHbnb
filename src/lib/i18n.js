@@ -5,9 +5,15 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import HttpBackend from 'i18next-http-backend';
 
+const isBrowser = typeof window !== 'undefined';
+
+if (isBrowser) {
+  i18n
+    .use(HttpBackend)
+    .use(LanguageDetector);
+}
+
 i18n
-  .use(HttpBackend)
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     fallbackLng: 'en',
@@ -15,16 +21,24 @@ i18n
     ns: ['common'],
     defaultNS: 'common',
     debug: false,
+    resources: {
+      en: {
+        common: {} // Provide empty object to prevent hangs during build
+      }
+    },
     interpolation: {
       escapeValue: false, // React handles escaping
     },
-    backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json',
+    react: {
+      useSuspense: false, // Disable suspense to prevent build hangs
     },
-    detection: {
+    backend: isBrowser ? {
+      loadPath: '/locales/{{lng}}/{{ns}}.json',
+    } : undefined,
+    detection: isBrowser ? {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
-    },
+    } : undefined,
   });
 
 export default i18n;

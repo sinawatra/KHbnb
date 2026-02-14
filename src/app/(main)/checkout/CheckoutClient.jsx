@@ -13,6 +13,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { useCurrency } from "@/components/contexts/CurrencyContext";
 import { encryptData } from "@/lib/crypto";
+import { useTranslation } from "react-i18next";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
@@ -20,6 +21,7 @@ const stripePromise = loadStripe(
 
 // --- 1. CHECKOUT FORM (For New Cards) ---
 function CheckoutForm({ bookingData }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
@@ -158,7 +160,7 @@ function CheckoutForm({ bookingData }) {
         className="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-red-700 disabled:opacity-50"
       >
         <span id="button-text">
-          {isLoading ? "Processing..." : "Confirm and Pay"}
+          {isLoading ? t("checkout.processing") : t("checkout.confirm_pay")}
         </span>
       </button>
       {message && (
@@ -172,6 +174,7 @@ function CheckoutForm({ bookingData }) {
 
 // --- 2. STRIPE WRAPPER ---
 function StripePaymentForm({ bookingData }) {
+  const { t } = useTranslation();
   const [clientSecret, setClientSecret] = useState("");
   const [message, setMessage] = useState(null);
 
@@ -208,7 +211,7 @@ function StripePaymentForm({ bookingData }) {
   if (!clientSecret) {
     return (
       <div className="text-center py-10">
-        <p className="text-gray-500">{message || "Loading payment form..."}</p>
+        <p className="text-gray-500">{message || t("checkout.loading_payment")}</p>
       </div>
     );
   }
@@ -222,6 +225,7 @@ function StripePaymentForm({ bookingData }) {
 
 // --- 3. MAIN PAGE COMPONENT ---
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading, user, profile } = useAuth();
@@ -398,7 +402,7 @@ export default function CheckoutPage() {
   };
   // --- 5. SUCCESS PAGE ---
   if (step === "success") {
-    if (!bookingData) return <div>Loading success page...</div>;
+    if (!bookingData) return <div>{t("checkout.loading_success")}</div>;
 
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -425,14 +429,14 @@ export default function CheckoutPage() {
           {/* Success Message */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Booking Confirmed!
+              {t("checkout.booking_confirmed")}
             </h1>
           </div>
 
           {/* Booking Details Card */}
           <div className="border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
             <h2 className="font-semibold text-lg text-gray-900 border-b pb-3">
-              Booking Details
+              {t("checkout.booking_details")}
             </h2>
 
             {/* Property Info */}
@@ -455,7 +459,7 @@ export default function CheckoutPage() {
                   {bookingData.property.location}
                 </p>
                 <p className="text-sm text-gray-600">
-                  Hosted by {bookingData.property.host}
+                  {t("checkout.hosted_by", { host: bookingData.property.host })}
                 </p>
               </div>
             </div>
@@ -463,7 +467,7 @@ export default function CheckoutPage() {
             {/* Date & Guests */}
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div>
-                <p className="text-sm text-gray-500">Check-in</p>
+                <p className="text-sm text-gray-500">{t("checkout.check_in")}</p>
                 <p className="font-semibold">
                   {new Date(bookingData.checkIn).toLocaleDateString("en-US", {
                     month: "short",
@@ -473,7 +477,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Check-out</p>
+                <p className="text-sm text-gray-500">{t("checkout.check_out")}</p>
                 <p className="font-semibold">
                   {new Date(bookingData.checkOut).toLocaleDateString("en-US", {
                     month: "short",
@@ -483,15 +487,15 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Guests</p>
+                <p className="text-sm text-gray-500">{t("checkout.guests")}</p>
                 <p className="font-semibold">
-                  {bookingData.guests} guest{bookingData.guests > 1 ? "s" : ""}
+                  {bookingData.guests > 1 ? t("checkout.guest_plural", { count: bookingData.guests }) : t("checkout.guest", { count: bookingData.guests })}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Nights</p>
+                <p className="text-sm text-gray-500">{t("checkout.nights")}</p>
                 <p className="font-semibold">
-                  {bookingData.nights} night{bookingData.nights > 1 ? "s" : ""}
+                  {bookingData.nights > 1 ? t("checkout.night_plural", { count: bookingData.nights }) : t("checkout.night", { count: bookingData.nights })}
                 </p>
               </div>
             </div>
@@ -500,23 +504,22 @@ export default function CheckoutPage() {
             <div className="pt-4 border-t space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  {convertPrice(bookingData.property.pricePerNight)} x {bookingData.nights}{" "}
-                  nights
+                  {t("checkout.price_per_night", { price: convertPrice(bookingData.property.pricePerNight), count: bookingData.nights })}
                 </span>
                 <span className="text-gray-900">{convertPrice(bookingData.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Cleaning fee</span>
+                <span className="text-gray-600">{t("checkout.cleaning_fee")}</span>
                 <span className="text-gray-900">
                   {convertPrice(bookingData.cleaningFee)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Service fee</span>
+                <span className="text-gray-600">{t("checkout.service_fee")}</span>
                 <span className="text-gray-900">{convertPrice(bookingData.serviceFee)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                <span>Total paid</span>
+                <span>{t("checkout.total_paid")}</span>
                 <span className="text-green-600">{convertPrice(bookingData.total)}</span>
               </div>
             </div>
@@ -528,13 +531,13 @@ export default function CheckoutPage() {
               onClick={() => router.push("/booking-history")}
               className="flex-1 bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition"
             >
-              View My Bookings
+              {t("checkout.view_bookings")}
             </button>
             <button
               onClick={() => router.push("/")}
               className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50 transition"
             >
-              Return Home
+              {t("checkout.return_home")}
             </button>
           </div>
         </div>
@@ -546,7 +549,7 @@ export default function CheckoutPage() {
   if (loading || !bookingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">{t("checkout.loading")}</div>
       </div>
     );
   }
@@ -561,16 +564,16 @@ export default function CheckoutPage() {
             <div>
               <div className="border-b pb-6 mb-6">
                 <h2 className="text-xl font-semibold mb-4">
-                  Log in or sign up
+                  {t("checkout.log_in_signup")}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Logged in as{" "}
+                  {t("checkout.logged_in_as")}{" "}
                   {profile?.full_name || user?.email || "User"}{" "}
                 </p>
               </div>
 
               <div>
-                <h2 className="text-xl font-semibold mb-4">Payment method</h2>
+                <h2 className="text-xl font-semibold mb-4">{t("checkout.payment_method")}</h2>
 
                 {savedCards.length > 0 && !useNewCard ? (
                   <div className="space-y-4">
@@ -587,7 +590,7 @@ export default function CheckoutPage() {
                             •••• {card.card.last4}
                           </p>
                           <p className="text-sm text-gray-600">
-                            Expires {card.card.exp_month}/{card.card.exp_year}
+                            {t("billing.expires")} {card.card.exp_month}/{card.card.exp_year}
                           </p>
                         </div>
                         <button
@@ -599,8 +602,8 @@ export default function CheckoutPage() {
                             }`}
                         >
                           {selectedCardId === card.id
-                            ? "Selected"
-                            : "Use this card"}
+                            ? t("checkout.selected")
+                            : t("checkout.use_this_card")}
                         </button>
                       </div>
                     ))}
