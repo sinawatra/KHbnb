@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { getOrCreateStripeCustomer } from "@/lib/stripe-helper";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
@@ -22,66 +23,28 @@ export async function POST(request) {
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from("users")
       .select("stripe_customer_id, full_name") // Added full_name
       .eq("user_id", user.id)
       .single();
 
-    if (!profile?.stripe_customer_id) {
-      // If NOT in DB at all, create now (auto-heal for first-time users if missed)
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: profile?.full_name || user.email,
-      });
-      await supabase
-        .from("users")
-        .update({ stripe_customer_id: customer.id })
-        .eq("user_id", user.id);
-      profile.stripe_customer_id = customer.id;
+    if (error || !profile) {
+      console.error("User profile not found for user:", user.id);
+      throw new Error("User profile not found.");
     }
 
+    // Use helper to ensure valid Stripe customer
+    const customerId = await getOrCreateStripeCustomer(supabase, user, profile);
+
     const amount = Math.round(total * 100);
-    let customerId = profile.stripe_customer_id;
-
-    // Helper to Create/Confirm Intent with Auto-Heal
-    const createPaymentIntent = async (params) => {
-      try {
-        return await stripe.paymentIntents.create({
-          ...params,
-          customer: customerId,
-        });
-      } catch (error) {
-        // If Customer ID is invalid in Stripe (e.g. deleted in dashboard but exists in DB)
-        if (error.code === "resource_missing" && error.param === "customer") {
-          console.log("Stripe customer missing. Re-creating...");
-          const newCustomer = await stripe.customers.create({
-            email: user.email,
-            name: profile?.full_name || user.email,
-          });
-          customerId = newCustomer.id;
-
-          // Update DB with new ID
-          await supabase
-            .from("users")
-            .update({ stripe_customer_id: customerId })
-            .eq("user_id", user.id);
-
-          // Retry with new ID
-          return await stripe.paymentIntents.create({
-            ...params,
-            customer: customerId,
-          });
-        }
-        throw error; // Rethrow other errors
-      }
-    };
 
     // --- SCENARIO A: PAYING WITH SAVED CARD ---
     if (paymentMethodId) {
-      const paymentIntent = await createPaymentIntent({
+      const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
+        customer: customerId,
         payment_method: paymentMethodId,
         off_session: true,
         confirm: true,
@@ -122,9 +85,10 @@ export async function POST(request) {
 
     // --- SCENARIO B: PAYING WITH NEW CARD ---
     else {
-      const paymentIntent = await createPaymentIntent({
+      const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
+        customer: customerId,
         setup_future_usage: "off_session",
         metadata: {
           booking_id: bookingId || "",

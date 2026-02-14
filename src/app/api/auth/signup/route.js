@@ -1,6 +1,4 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
@@ -39,16 +37,13 @@ export async function POST(request) {
     });
   }
 
-  const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // Use admin client to create user to bypass public signup rate limits
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-      },
+    email_confirm: true,
+    user_metadata: {
+      full_name: fullName,
     },
   });
 
@@ -80,7 +75,7 @@ export async function POST(request) {
     customerId = customer.id;
   } catch (stripeError) {
     console.error("Stripe customer creation failed:", stripeError.message);
-    await supabase.auth.admin.deleteUser(user.id);
+    await supabaseAdmin.auth.admin.deleteUser(user.id);
     return NextResponse.json({
       success: false,
       error: "Could not create billing profile.",
@@ -99,7 +94,7 @@ export async function POST(request) {
   if (insertError) {
     console.error("Failed to save user profile:", insertError.message);
     
-    await supabase.auth.admin.deleteUser(user.id);
+    await supabaseAdmin.auth.admin.deleteUser(user.id);
     await stripe.customers.del(customerId);
 
     return NextResponse.json({
@@ -114,7 +109,7 @@ export async function POST(request) {
     message: "successful",
     data: {
       details:
-        "Signup complete! Please check your email to verify your account.",
+        "Signup complete! Your account has been created and verified.",
     },
   });
 }

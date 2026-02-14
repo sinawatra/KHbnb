@@ -26,11 +26,12 @@ export default function PaymentManager() {
   const fetchMethods = useCallback(() => {
     setIsLoading(true);
     fetch("/api/stripe/get-payment-methods")
-      .then((res) => {
+      .then(async (res) => {
+        const data = await res.json();
         if (!res.ok) {
-          throw new Error(`API Error: ${res.statusText}`);
+          throw new Error(data.error?.message || `API Error: ${res.statusText}`);
         }
-        return res.json();
+        return data;
       })
       .then((data) => {
         if (data.paymentMethods) {

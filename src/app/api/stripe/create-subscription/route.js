@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { getOrCreateStripeCustomer } from "@/lib/stripe-helper";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
@@ -42,19 +43,21 @@ export async function POST(request) {
     // --- 2. Get user's Stripe Customer ID ---
     const { data: profile, error } = await supabase
       .from("users")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, full_name")
       .eq("user_id", user.id)
       .single();
 
-    if (error || !profile || !profile.stripe_customer_id) {
+    if (error || !profile) {
       console.error(
-        "Stripe customer ID not found for user:",
-        session.user.id,
+        "User profile not found for user:",
+        user.id,
         error
       );
-      throw new Error("Stripe customer ID not found.");
+      throw new Error("User profile not found.");
     }
-    const customerId = profile.stripe_customer_id;
+    
+    // Use helper to ensure valid Stripe customer
+    const customerId = await getOrCreateStripeCustomer(supabase, user, profile);
 
     // A. Check Stripe directly for active subscriptions
     const stripeSubscriptions = await stripe.subscriptions.list({

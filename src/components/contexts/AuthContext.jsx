@@ -158,7 +158,16 @@ export function AuthProvider({ children }) {
       const result = await response.json();
 
       if (result.success) {
-        return { success: true, message: "Signup successful" };
+        // Log in the user after successful signup
+        const loginResult = await login(email, password);
+        if (loginResult.success) {
+          return { success: true, message: "Signup and login successful" };
+        } else {
+          return { 
+            success: true, 
+            message: "Signup successful, but login failed. Please log in manually." 
+          };
+        }
       }
       return { success: false, error: result.error || "Signup failed" };
     } catch (err) {

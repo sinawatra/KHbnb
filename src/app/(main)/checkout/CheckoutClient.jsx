@@ -294,17 +294,15 @@ export default function CheckoutPage() {
   // Fetch saved cards
   useEffect(() => {
     if (user) {
-      console.log("User session:", {
-        userId: user.id,
-        email: user.email,
-      });
-
       fetch("/api/stripe/get-payment-methods")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.error) {
-            console.error("API Error:", data.error);
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error?.message || `API Error: ${res.statusText}`);
           }
+          return data;
+        })
+        .then((data) => {
           if (data.paymentMethods?.length > 0) {
             setSavedCards(data.paymentMethods);
             setSelectedCardId(data.paymentMethods[0].id);
@@ -314,7 +312,7 @@ export default function CheckoutPage() {
           }
         })
         .catch((err) => {
-          console.error("Fetch error:", err);
+          console.error("Error fetching payment methods:", err);
           setUseNewCard(true);
         });
     }

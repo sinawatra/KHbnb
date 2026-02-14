@@ -202,14 +202,14 @@ function PropertiesContent() {
                     <h2 className="py-2 px-3 border border-amber-400 font-bold rounded-full w-fit">
                       {provinceName}
                     </h2>
-                    {index === 0 && (
+                    {/* {index === 0 && (
                       <button
                         onClick={() => setShowMap(true)}
                         className="bg-black rounded-full text-white font-bold py-2 px-3"
                       >
                         View in map
                       </button>
-                    )}
+                    )} */}
                   </div>
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {properties.map((property) => (
